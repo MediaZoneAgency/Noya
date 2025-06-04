@@ -1,0 +1,35 @@
+import 'package:cubit_app/core/helpers/spacing.dart';
+import 'package:cubit_app/core/theming/colors.dart';
+import 'package:cubit_app/core/theming/styles.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_screenutil/flutter_screenutil.dart';
+
+
+class ContinueWith extends StatelessWidget {
+  final String text;
+  final Widget logoIcon;
+  const ContinueWith({super.key, required this.text,required this.logoIcon});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.maxFinite.w,
+      height: 58,
+      decoration: BoxDecoration(
+          color: Colors.white, borderRadius: BorderRadius.circular(15),border: Border.all(color: ColorsManager.lightGray)),
+      child: MaterialButton(
+          onPressed: () {
+          },
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              logoIcon,
+              horizontalSpace(10.w),
+              Text(
+                text, style: TextStyles.font16DarkBlackRegular,
+              ),
+            ],
+          )),
+    );
+  }
+}
