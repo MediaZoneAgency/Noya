@@ -1,0 +1,2 @@
+D:/Noya/android/app/.cxx/Debug/3z1c5838/x86_64/CMakeFiles/edit_cache.dir
+D:/Noya/android/app/.cxx/Debug/3z1c5838/x86_64/CMakeFiles/rebuild_cache.dir

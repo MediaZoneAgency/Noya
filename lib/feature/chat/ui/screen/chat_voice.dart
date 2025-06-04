@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'package:broker/core/theming/styles.dart';
 import 'package:broker/feature/profie/logic/profile_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart' as fs;
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:lottie/lottie.dart';
@@ -55,7 +56,14 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
     await Permission.microphone.request();
     await recorder.openRecorder();
   }
-
+  static const platform = MethodChannel('call_channel');
+  Future<void> startCallService() async {
+    try {
+      await platform.invokeMethod('startService');
+    } on PlatformException catch (e) {
+      print("Failed to start service: '${e.message}'.");
+    }
+  }
   void startRecording() async {
     channel = WebSocketChannel.connect(Uri.parse(wsUrl));
     print("🌐 WebSocket opened");

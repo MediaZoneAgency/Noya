@@ -12,19 +12,19 @@ android {
     ndkVersion = flutter.ndkVersion  // Make sure you're using an NDK compatible with Flutter
 
     compileOptions {
-        sourceCompatibility = JavaVersion.VERSION_1_8
-        targetCompatibility = JavaVersion.VERSION_1_8
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
     }
 
 
     kotlinOptions {
-        jvmTarget = JavaVersion.VERSION_1_8
+        jvmTarget = JavaVersion.VERSION_17
     }
 
     defaultConfig {
         applicationId "com.example.broker"
         minSdkVersion 24
-        compileSdkVersion 34 // Ensure it matches
+        compileSdkVersion 35 // Ensure it matches
         targetSdkVersion 34   // Update this to the latest version
         versionCode flutter.versionCode
         versionName flutter.versionName
@@ -50,4 +50,8 @@ android {
 
 flutter {
     source = "../.."  // Ensure the Flutter source path is correct
+}
+dependencies {
+    // OkHttp dependency for WebSocket support
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
