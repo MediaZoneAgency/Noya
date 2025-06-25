@@ -22,11 +22,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await CashHelper.init();
   await setupGetIt();
-@pragma('vm:entry-point')
-void backgroundEntryPoint() {
-  // ignore: deprecated_member_use
-  AudioServiceBackground.run(() => VoiceChatBackgroundTask());
-}
+//@pragma('vm:entry-point')
+// void backgroundEntryPoint() {
+//   // ignore: deprecated_member_use
+//   AudioServiceBackground.run(() => VoiceChatBackgroundTask());
+// }//
 
   runApp(
     MultiBlocProvider(

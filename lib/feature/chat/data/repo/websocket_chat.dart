@@ -7,7 +7,7 @@ class WebSocketService {
   WebSocketChannel? _channel;
   final StreamController<String> _controller = StreamController.broadcast();
   Stream<String> get stream => _controller.stream;
-  
+
   bool _isConnecting = false;
   bool _connected = false;
   int _reconnectAttempts = 0;
@@ -15,46 +15,71 @@ class WebSocketService {
   Timer? _reconnectTimer;
   Timer? _pingTimer;
 
-  Future<void> connect() async {
-    if (_isConnecting || _connected) return;
-    
-    _isConnecting = true;
-    
-    try {
-      final uri = Uri.parse('wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/')
-          .replace(queryParameters: {'user_id': '46'});
+  String? _lastMessage;
+  String? _sessionId;
+String? get sessionId => _sessionId;
+ // ✅ لحفظ آخر رسالة
+Future<void> connect() async {
+  if (_isConnecting || _connected) return;
 
-      print("🌐 Connecting to WebSocket: $uri");
+  _isConnecting = true;
 
-      _channel = WebSocketChannel.connect(uri);
+  try {
+    final userId = "46";
+    final uri = Uri.parse('wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/')
+        .replace(queryParameters: {'user_id': userId});
 
-      // Start ping mechanism
-      _startPing();
+    print("🌐 Connecting to WebSocket: $uri");
 
-      _channel!.stream.listen(
-        (message) => _handleMessage(message),
-        onError: (error) => _handleError(error),
-        onDone: () => _handleDisconnect(),
-        cancelOnError: true,
-      );
+    _channel = WebSocketChannel.connect(uri);
+    _startPing();
 
-      _connected = true;
-      _isConnecting = false;
-      _reconnectAttempts = 0;
-    } catch (e, stack) {
-      _isConnecting = false;
-      print("❌ Connection failed: $e");
-      print("📚 StackTrace: $stack");
-      _scheduleReconnect();
-      rethrow;
-    }
+   _channel!.stream.listen(
+  (message) {
+    print("📩 Received: $message");
+
+    // ✅ نحاول نقرأ session_id من أول رسالة (أو أي رسالة تحتويه)
+    // try {
+    //   final decoded = jsonDecode(message);
+    //   if (decoded is Map && decoded['session_id'] != null) {
+    //     _sessionId = decoded['session_id'];
+    //     print("🆔 Session ID from backend (assigned): $_sessionId");
+    //   } else {
+    //     print("🔍 No session_id in message");
+    //   }
+    // } catch (e) {
+    //   print("⚠️ Could not decode JSON or extract session_id: $e");
+    // }
+
+    // print("📦 Current session_id state: $_sessionId");
+
+    _handleMessage(message);
+  },
+  onError: (error) {
+    _handleError(error);
+  },
+  onDone: () {
+    _handleDisconnect();
+  },
+  cancelOnError: true,
+);
+
+    _connected = true;
+    _isConnecting = false;
+    _reconnectAttempts = 0;
+  } catch (e, stack) {
+    _isConnecting = false;
+    print("❌ Connection failed: $e");
+    print("📚 StackTrace: $stack");
+    _scheduleReconnect();
+    rethrow;
   }
+}
 
-  void _startPing() {
-    // Cancel any existing ping timer
+
+void _startPing() {
     _pingTimer?.cancel();
-    
-    // Send ping every 30 seconds to keep connection alive
+
     _pingTimer = Timer.periodic(Duration(seconds: 30), (timer) {
       if (_connected && _channel != null) {
         try {
@@ -68,26 +93,60 @@ class WebSocketService {
     });
   }
 
-  void _handleMessage(dynamic message) {
-    if (message is String) {
-      print("📩 Received: $message");
-      
-      try {
-        final json = jsonDecode(message);
-        // Handle ping response
-        if (json['type'] == 'pong') {
-          print('🏓 Received pong');
-          return;
-        }
-        _controller.add(message);
-      } catch (e) {
-        // Handle non-JSON messages (like session ID)
-        if (message.length == 36) {
-          print("✅ Session confirmed: $message");
-        } else {
-          _controller.add(message);
-        }
+void _handleMessage(dynamic message) {
+  if (message is String) {
+    print("📩 Received in _handleMessage: $message");
+
+    if (!_isValidUtf16(message)) {
+      print("⚠️ Skipping invalid UTF-16 message");
+      return;
+    }
+
+    if (message == _lastMessage) {
+      print("⚠️ Duplicate message ignored");
+      return;
+    }
+
+    _lastMessage = message;
+
+    try {
+      final json = jsonDecode(message);
+      if (json['type'] == 'pong') {
+        print('🏓 Received pong');
+        return;
       }
+
+      if (json['session_id'] != null) {
+        _sessionId = json['session_id'];
+        print("✅ session_id inside JSON: $_sessionId");
+      }
+
+      _controller.add(message);
+    } catch (e) {
+      // لو الرسالة مش JSON
+      print("❗ Could not decode JSON or extract session_id: $e");
+      print("📦 Current session_id state: $_sessionId");
+
+      // لو الرسالة طولها 36 (شكل UUID)
+      if (message.length == 36 && _sessionId == null) {
+        _sessionId = message;
+        print("✅ Session ID detected from raw string: $_sessionId");
+      }
+
+      // مهما كان أضف الرسالة للتطبيق
+      _controller.add(message);
+    }
+
+    print("📦 _sessionId after _handleMessage: $_sessionId");
+  }
+}
+
+ bool _isValidUtf16(String input) {
+    try {
+      utf8.decode(utf8.encode(input));
+      return true;
+    } catch (_) {
+      return false;
     }
   }
 
@@ -105,12 +164,12 @@ class WebSocketService {
 
   void _scheduleReconnect() {
     if (_reconnectAttempts >= _maxReconnectAttempts) return;
-    
+
     _reconnectAttempts++;
     final delay = Duration(seconds: _reconnectAttempts * 2);
-    
+
     print("⏳ Scheduling reconnect in ${delay.inSeconds} seconds...");
-    
+
     _reconnectTimer?.cancel();
     _reconnectTimer = Timer(delay, () {
       if (!_connected) {
@@ -123,10 +182,7 @@ class WebSocketService {
     if (!_connected || _channel == null) {
       print('⚠️ Not connected, attempting to reconnect...');
       await connect();
-      
-      // Wait a bit for connection to establish
       await Future.delayed(Duration(milliseconds: 500));
-      
       if (!_connected) {
         throw Exception('Failed to send message - no connection');
       }

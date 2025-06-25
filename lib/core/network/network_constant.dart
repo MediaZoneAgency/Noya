@@ -1,5 +1,5 @@
 class NetworkConstant {
-  static const baseUrl = "https://dashboardadmin.mediazoneag.com/";
+  static const baseUrl = "https://noyaai.com/";
   static const baseUrl1 =
       "https://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/";
   static const unitsTypes = "units";

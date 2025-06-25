@@ -1,20 +1,37 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
-import 'dart:math';
-import 'dart:io';
 import 'dart:ui';
-
-import 'package:broker/core/theming/styles.dart';
-import 'package:broker/feature/profie/logic/profile_cubit.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_sound/flutter_sound.dart' as fs;
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:lottie/lottie.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
-import 'package:path_provider/path_provider.dart';
+
+import 'package:broker/core/theming/styles.dart';
+import 'package:broker/feature/profie/logic/profile_cubit.dart';
+
+// ---  هذا هو الكلاس المساعد الذي قمنا بإعادته (الحل) ---
+// هذا هو "المبنى الفعلي" الذي يرث من "المخطط"
+class StreamingAudioSource extends ja.StreamAudioSource {
+  final StreamController<Uint8List> _audioStreamController;
+
+  StreamingAudioSource(
+      this._audioStreamController); // هذا هو الكونستركتور الصحيح
+
+  @override
+  Future<ja.StreamAudioResponse> request([int? start, int? end]) async {
+    return ja.StreamAudioResponse(
+      sourceLength: null,
+      contentLength: null,
+      offset: 0,
+      stream: _audioStreamController.stream,
+      // نحدد النوع هنا ليتطابق مع ما نطلبه من الخادم
+      contentType: 'audio/pcm;rate=16000',
+    );
+  }
+}
 
 class VoiceChatScreen extends StatefulWidget {
   const VoiceChatScreen({Key? key}) : super(key: key);
@@ -27,262 +44,172 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   final recorder = fs.FlutterSoundRecorder();
   final player = ja.AudioPlayer();
   final wsUrl =
-      'wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/voice-chat?user_id=46';
+      'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_01jxvx0pagev7rzteynqzkk8eb&output_format_pcm_16000=true';
+
   WebSocketChannel? channel;
   StreamSubscription? socketSubscription;
-  final _audioStreamController = StreamController<Uint8List>();
+  StreamSubscription? recorderSubscription;
+  StreamSubscription? playerStateSubscription;
 
-  final _audioBuffer = BytesBuilder();
-  Timer? silenceTimer;
-  Timer? periodicFlushTimer;
-  double? ambientNoiseLevel;
+  final _incomingAudioStreamController =
+      StreamController<Uint8List>.broadcast();
+  final _recorderAudioStreamController =
+      StreamController<Uint8List>.broadcast();
 
   bool isRecording = false;
   bool isSessionConfirmed = false;
-  bool pauseSending = false;
-  bool isThinking = false;
-
-  final double vadThreshold = 800; // حساسية الصوت
-  final Duration silenceDuration = Duration(seconds: 2); // وقت الصمت للتجميع
+  bool isAgentSpeaking = false;
+  bool _isPlayerConfigured = false;
 
   @override
   void initState() {
     super.initState();
-    initRecorder();
-
+    initRecorderAndPlayer();
   }
 
-  Future<void> initRecorder() async {
+  Future<void> initRecorderAndPlayer() async {
     await Permission.microphone.request();
     await recorder.openRecorder();
-  }
-  static const platform = MethodChannel('call_channel');
-  Future<void> startCallService() async {
-    try {
-      await platform.invokeMethod('startService');
-    } on PlatformException catch (e) {
-      print("Failed to start service: '${e.message}'.");
-    }
-  }
-  void startRecording() async {
-    channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-    print("🌐 WebSocket opened");
 
-    socketSubscription = channel!.stream.listen((event) async {
-      if (event is Uint8List) {
-        pauseSending = true;
-        await recorder.pauseRecorder();
-        await _playWavFromBytes(event);
-        await recorder.resumeRecorder();
-        pauseSending = false;
-      } else if (event is String) {
-        print("📩 Received text: $event");
-        if (event.length == 36) {
-          isSessionConfirmed = true;
-          print("✅ Session confirmed with ID: $event");
+    playerStateSubscription = player.playerStateStream.listen((state) {
+      if (state.processingState == ja.ProcessingState.completed) {
+        if (isAgentSpeaking && mounted) {
+          print("Agent finished speaking.");
+          setState(() {
+            isAgentSpeaking = false;
+          });
         }
       }
     });
+  }
 
-    _audioStreamController.stream.listen((buffer) {
-      handleAudioChunk(buffer);
-    });
-
-    // periodicFlushTimer = Timer.periodic(Duration(seconds: 2), (timer) {
-    //   if (_audioBuffer.length >= 4000 && isSessionConfirmed && channel != null) {
-    //     print("📤 إرسال تلقائي كل 2 ثانية: ${_audioBuffer.length} bytes");
-    //     channel!.sink.add(_audioBuffer.toBytes());
-    //     _audioBuffer.clear();
-    //   }
-    // });
-    periodicFlushTimer = Timer.periodic(Duration(seconds: 2), (timer) {
-      if (!pauseSending &&
-          _audioBuffer.length >= 4000 &&
-          isSessionConfirmed &&
-          channel != null) {
-        print("📤 إرسال تلقائي كل 2 ثانية: ${_audioBuffer.length} bytes");
-        channel!.sink.add(_audioBuffer.toBytes());
-        _audioBuffer.clear();
-      }
-    });
-
-    await recorder.startRecorder(
-      codec: fs.Codec.pcm16WAV,
-      sampleRate: 16000,
-      numChannels: 1,
-      bitRate: 16000 * 2,
-      toStream: _audioStreamController.sink,
-    );
-
+  void startRecording() async {
+    if (isRecording) return;
     setState(() {
       isRecording = true;
     });
-  }
-
-  void handleAudioChunk(Uint8List buffer) {
-    double energy = _calculateRMS(buffer);
-    print("🔍 Energy: $energy");
-
-    if (energy >= vadThreshold) {
-      print("🎙️ صوت واضح - بنجمع الصوت");
-      _audioBuffer.add(buffer);
-
-      silenceTimer?.cancel();
-      silenceTimer = Timer(silenceDuration, () {
-        if (_audioBuffer.length >= 4000) {
-          print("📤 إرسال accumulated buffer: ${_audioBuffer.length} bytes");
-          if (isSessionConfirmed && channel != null) {
-            channel!.sink.add(_audioBuffer.toBytes());
-          }
-
-          _saveWavToFile(
-              _audioBuffer.toBytes()); // ← دي بتتحفظ دايمًا لو الصوت كافي
-        } else {
-          print(
-              "⚠️ تجاهل الصوت لأنه أقل من 0.1 ثانية (${_audioBuffer.length} bytes)");
-        }
-        _audioBuffer.clear();
-      });
-    } else {
-      print("🤫 صمت أو دوشة - مش هنبعت");
-    }
-  }
-// void handleAudioChunk(Uint8List buffer) {
-//   double energy = _calculateRMS(buffer);
-//   print("🔍 Energy: $energy");
-
-//   // 🧠 Step 1: تحديث مستوى الضوضاء البيئي
-//   if (ambientNoiseLevel == null) {
-//     ambientNoiseLevel = energy;
-//   } else {
-//     ambientNoiseLevel = (0.9 * ambientNoiseLevel!) + (0.1 * energy);
-//   }
-
-//   double adaptiveThreshold = ambientNoiseLevel! * 1.8;
-//   print("📊 Adaptive Threshold: $adaptiveThreshold");
-
-//   // 🧠 Step 2: المقارنة باستخدام threshold المتغير
-//   if (energy >= adaptiveThreshold) {
-//     print("🎙️ صوت واضح - بنجمع الصوت");
-//     _audioBuffer.add(buffer);
-
-//     silenceTimer?.cancel();
-//     silenceTimer = Timer(silenceDuration, () {
-//       if (_audioBuffer.length >= 4000) {
-//         print("📤 إرسال accumulated buffer: ${_audioBuffer.length} bytes");
-//         if (isSessionConfirmed && channel != null) {
-//           channel!.sink.add(_audioBuffer.toBytes());
-//           _saveWavToFile(_audioBuffer.toBytes());
-//         }
-//       } else {
-//         print("⚠️ تجاهل الصوت لأنه أقل من 0.1 ثانية (${_audioBuffer.length} bytes)");
-//       }
-//       _audioBuffer.clear();
-//     });
-//   } else {
-//     print("🤫 صمت أو دوشة - مش هنبعت");
-//   }
-// }
-
-  double _calculateRMS(Uint8List data) {
-    final buffer = Int16List.view(data.buffer);
-    double sumSquares = 0;
-    for (var sample in buffer) {
-      sumSquares += sample * sample;
-    }
-    return sqrt(sumSquares / buffer.length);
-  }
-
-  Future<void> _playWavFromBytes(Uint8List bytes) async {
-    final base64Data = base64Encode(bytes);
-    final dataUri = Uri.parse('data:audio/wav;base64,$base64Data');
 
     try {
-      await player.setAudioSource(ja.AudioSource.uri(dataUri));
-      await player.play();
+      channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      print("🌐 WebSocket connecting...");
+
+      socketSubscription =
+          channel!.stream.listen(_onSocketData, onError: (error) {
+        print(" WebSocket Error: $error");
+        stopRecording();
+      }, onDone: () {
+        print(" WebSocket disconnected.");
+        stopRecording();
+      });
+
+      recorderSubscription =
+          _recorderAudioStreamController.stream.listen((buffer) {
+        if (isSessionConfirmed && !isAgentSpeaking && channel != null) {
+          channel!.sink
+              .add(jsonEncode({"user_audio_chunk": base64Encode(buffer)}));
+        }
+      });
+
+      await recorder.startRecorder(
+        codec: fs.Codec.pcm16,
+        toStream: _recorderAudioStreamController.sink,
+        sampleRate: 16000,
+        numChannels: 1,
+      );
     } catch (e) {
-      print('❌ Error playing audio: $e');
+      print("❌ Failed to start recording: $e");
+      stopRecording();
     }
   }
 
-  // Future<void> _playWavFromBytes(Uint8List bytes) async {
-  //   final dir = await getTemporaryDirectory();
-  //   final file = File('${dir.path}/response.wav');
-  //   await file.writeAsBytes(bytes);
-  //   await player.setFilePath(file.path);
-  //   await player.play();
-  // }
-  void _saveWavToFile(Uint8List audioData) async {
-    final dir = await getExternalStorageDirectory(); // Android فقط
-    final timestamp = DateTime.now().millisecondsSinceEpoch;
-    final file = File('${dir!.path}/recorded_$timestamp.wav');
+  void _onSocketData(dynamic data) async {
+    print(data);
+    if (data is! String) return;
 
-    // WAV header parameters
-    final int sampleRate = 16000;
-    final int numChannels = 1;
-    final int byteRate = sampleRate * 2;
-    final int blockAlign = numChannels * 2;
-    final int bitsPerSample = 16;
-    final int dataLength = audioData.length;
+    try {
+      final decoded = jsonDecode(data) as Map<String, dynamic>;
 
-    final header = BytesBuilder();
-    header.add(ascii.encode('RIFF'));
-    header.add(_intToBytes(36 + dataLength, 4));
-    header.add(ascii.encode('WAVEfmt '));
-    header.add(_intToBytes(16, 4)); // Subchunk1Size for PCM
-    header.add(_intToBytes(1, 2)); // Audio format = PCM
-    header.add(_intToBytes(numChannels, 2));
-    header.add(_intToBytes(sampleRate, 4));
-    header.add(_intToBytes(byteRate, 4));
-    header.add(_intToBytes(blockAlign, 2));
-    header.add(_intToBytes(bitsPerSample, 2));
-    header.add(ascii.encode('data'));
-    header.add(_intToBytes(dataLength, 4));
-    header.add(audioData);
+      if (decoded['audio_event']?['audio_base_64'] != null) {
+        final audioBytes =
+            base64Decode(decoded['audio_event']['audio_base_64']);
+        print("🎤 Received audio chunk: ${audioBytes.length} bytes");
 
-    await file.writeAsBytes(header.toBytes());
-    print('💾 Audio saved: ${file.path}');
-  }
+        if (!_isPlayerConfigured) {
+          print("⚙️ Configuring player for streaming...");
 
-  Uint8List _intToBytes(int value, int byteCount) {
-    final bytes = ByteData(byteCount);
-    switch (byteCount) {
-      case 2:
-        bytes.setInt16(0, value, Endian.little);
-        break;
-      case 4:
-        bytes.setInt32(0, value, Endian.little);
-        break;
+          // --- هنا قمنا باستدعاء الكلاس المساعد الصحيح ---
+          final audioSource =
+              StreamingAudioSource(_incomingAudioStreamController);
+
+          await player.setAudioSource(audioSource, preload: false);
+          _isPlayerConfigured = true;
+
+          _incomingAudioStreamController.add(audioBytes);
+          player.play();
+
+          if (mounted) {
+            setState(() {
+              isAgentSpeaking = true;
+            });
+          }
+        } else {
+          _incomingAudioStreamController.add(audioBytes);
+        }
+      } else if (decoded['type'] == 'conversation_initiation_metadata') {
+        print(
+            "✅ Server confirms settings: ${decoded['conversation_initiation_metadata_event']}");
+        if (mounted) {
+          setState(() {
+            isSessionConfirmed = true;
+          });
+        }
+      } else if (decoded['type'] == 'agent_response') {
+        final agentText = decoded['agent_response_event']?['agent_response'];
+        if (agentText != null) print("🤖 Agent Response Text: $agentText");
+      }
+    } catch (e) {
+      print("❌ Error processing server JSON: $e\nData: $data");
     }
-    return bytes.buffer.asUint8List();
   }
 
   void stopRecording() async {
-    await recorder.stopRecorder();
-    silenceTimer?.cancel();
-    periodicFlushTimer?.cancel();
+    if (!isRecording) return;
+    print("🛑 Stopping session...");
+
+    if (recorder.isRecording) await recorder.stopRecorder();
+    if (player.playing) await player.stop();
+
+    await recorderSubscription?.cancel();
+    await socketSubscription?.cancel();
     await channel?.sink.close();
-    await player.dispose();
-    socketSubscription?.cancel();
-    await _audioStreamController.close();
+    recorderSubscription = null;
+    socketSubscription = null;
+    channel = null;
 
-    print(
-        "❌ WebSocket closed: ${channel?.closeCode} | ${channel?.closeReason}");
-
-    setState(() {
-      isRecording = false;
-    });
+    if (mounted) {
+      setState(() {
+        isRecording = false;
+        isSessionConfirmed = false;
+        isAgentSpeaking = false;
+        _isPlayerConfigured = false;
+      });
+    }
   }
 
   @override
   void dispose() {
     stopRecording();
+    playerStateSubscription?.cancel();
     recorder.closeRecorder();
+    player.dispose();
+    _incomingAudioStreamController.close();
+    _recorderAudioStreamController.close();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    // No changes needed in the build method
     return Align(
       alignment: Alignment.center,
       child: Material(
@@ -298,12 +225,12 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
               decoration: BoxDecoration(
                 color: Colors.black.withOpacity(0.5),
                 borderRadius: BorderRadius.circular(30),
-                border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
+                border:
+                    Border.all(color: Colors.white.withOpacity(0.3), width: 1),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  // Top row: menu + avatar
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -311,14 +238,11 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                       CircleAvatar(
                         radius: 20,
                         backgroundImage: NetworkImage(
-                          ProfileCubit.get(context).profileUser?.image ?? '',
-                        ),
+                            ProfileCubit.get(context).profileUser?.image ?? ''),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 40),
-Spacer(),
-                  // Call button
+                  const Spacer(),
                   Center(
                     child: Container(
                       width: double.infinity,
@@ -326,40 +250,38 @@ Spacer(),
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(40),
-                        border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.5),
+                        border: Border.all(
+                            color: Colors.white.withOpacity(0.3), width: 0.5),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
                         children: [
-                          // ✅ موجة متحركة
-                       Lottie.asset('assets/img/Animation - 1748525990399.json'),
-                    
-                          // ✅ الزرار نفسه (Icon + Text)
+                          if (isRecording)
+                            Lottie.asset(
+                                'assets/img/Animation - 1748525990399.json'),
                           ElevatedButton.icon(
                             icon: Icon(
-                              isRecording ? Icons.call_end : Icons.play_arrow,
-                              color: Colors.white,
-                            ),
+                                isRecording ? Icons.call_end : Icons.play_arrow,
+                                color: Colors.white),
                             label: Text(
-                              isRecording ? 'End the Call' : 'Start Call',
-                              style: TextStyles.sarabunSemiBold32White.copyWith(fontSize: 18),
-                            ),
-                            onPressed: isRecording ? stopRecording : startRecording,
+                                isRecording ? 'End the Call' : 'Start Call',
+                                style: TextStyles.sarabunSemiBold32White
+                                    .copyWith(fontSize: 18)),
+                            onPressed:
+                                isRecording ? stopRecording : startRecording,
                             style: ElevatedButton.styleFrom(
                               elevation: 0,
                               backgroundColor: Colors.transparent,
                               shadowColor: Colors.transparent,
                               foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(40),
-                              ),
+                                  borderRadius: BorderRadius.circular(40)),
                             ),
                           ),
                         ],
                       ),
                     ),
                   )
-
                 ],
               ),
             ),

@@ -23,14 +23,14 @@ class ImageCarousel extends StatelessWidget {
 
           return Container(
             width: 350.w,
-            height: 450.h,
+            height: 538.h,
             decoration: BoxDecoration(
-              color: ColorsManager.mainThemeColor,
+           //   color: ColorsManager.mainThemeColor,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: ColorsManager.mediumDarkGray),
             ),
             child: Padding(
-              padding: const EdgeInsets.only(top:20),
+              padding: const EdgeInsets.only(top:20,right: 10,left: 10),
               child: Column(
                 children: [
                   // Main carousel

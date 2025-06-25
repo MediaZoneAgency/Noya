@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:broker/core/sharedWidgets/top_rated_item.dart';
 import 'package:broker/core/sharedWidgets/unit_widget.dart';
 import 'package:broker/feature/home/data/models/unit_model.dart';
+import 'package:broker/feature/map/ui/map_screen.dart';
 import 'package:flutter/material.dart';
 // تأكد من مسار الويدجت
 
@@ -27,6 +28,7 @@ class _ChatWidgetState extends State<ChatWidget> {
   String _displayedText = "";
   String _fullTargetText = "";
   Timer? _typingTimer;
+  String? _standaloneLocationLink;
   int _currentCharIndex = 0;
   final Duration _typingSpeed = const Duration(milliseconds: 30);
   List<UnitExtractionResult> _extractedUnits = [];
@@ -48,100 +50,123 @@ class _ChatWidgetState extends State<ChatWidget> {
       final parsed = extractUnitsWithIntro(widget.msg);
       _extractedUnits = [parsed]; // ✅ لف الكائن في ليست
     }
-  }UnitExtractionResult extractUnitsWithIntro(String text) {
-  final List<UnitModel> units = [];
-  String? intro;
-
-  final hasDelimitedUnits = text.contains('[[[UNIT_START]]]');
-
-  final unitBlocks = hasDelimitedUnits
-      ? RegExp(r'\[\[\[UNIT_START\]\]\](.*?)\[\[\[UNIT_END\]\]\]', dotAll: true)
-          .allMatches(text)
-          .map((e) => e.group(1)!)
-          .toList()
-      : [text]; // 🆕 لو مفيش delimiters، اعتبر النص كله وحدة
-
-  // المقدمة في حالة عدم وجود [[[UNIT_START]]]
-  if (!hasDelimitedUnits) {
-    final match = RegExp(r'^(.+?)\n[-•]\s+\*\*', dotAll: true).firstMatch(text);
-    intro = match?.group(1)?.trim();
-  } else {
-    final introMatch = RegExp(r'^(.*?)\[\[\[UNIT_START\]\]\]', dotAll: true).firstMatch(text);
-    intro = introMatch?.group(1)?.trim();
   }
 
-  if (intro?.isEmpty ?? true) intro = null;
+  UnitExtractionResult extractUnitsWithIntro(String text) {
+    final List<UnitModel> units = [];
+    String? intro;
 
-  for (final block in unitBlocks) {
-    print('🔍 block:\n$block');
+    final hasDelimitedUnits = text.contains('[[[UNIT_START]]]');
 
-    final title = RegExp(r'في\s+[\"“”]?(.+?)(?=[\"”])')
-        .firstMatch(block)
-        ?.group(1)
-        ?.trim();
+    final unitBlocks = hasDelimitedUnits
+        ? RegExp(r'\[\[\[UNIT_START\]\]\](.*?)\[\[\[UNIT_END\]\]\]',
+                dotAll: true)
+            .allMatches(text)
+            .map((e) => e.group(1)!)
+            .toList()
+        : [text]; // 🆕 لو مفيش delimiters، اعتبر النص كله وحدة
 
-    final location = RegExp(r'(?:(?:الموقع|Location)[:：]?\**\**)?(?:\s*[:-])?\s*(الشيخ زايد|القاهرة الجديدة|[^\n،.]+)')
-        .firstMatch(block)
-        ?.group(1)
-        ?.trim();
+    // المقدمة في حالة عدم وجود [[[UNIT_START]]]
+    if (!hasDelimitedUnits) {
+      final match =
+          RegExp(r'^(.+?)\n[-•]\s+\*\*', dotAll: true).firstMatch(text);
+      intro = match?.group(1)?.trim();
+    } else {
+      final introMatch = RegExp(r'^(.*?)\[\[\[UNIT_START\]\]\]', dotAll: true)
+          .firstMatch(text);
+      intro = introMatch?.group(1)?.trim();
+    }
 
-    final sizeText = RegExp(r'(?:(?:المساحة|Size|المساحة الواسعة)[:：]?\**\**)?(?:\s*[:-])?\s*([\d,\.]+)\s*(?:متر)?')
-        .firstMatch(block)
-        ?.group(1)
-        ?.replaceAll(',', '')
-        ?.trim();
+    if (intro?.isEmpty ?? true) intro = null;
 
-    final priceText = RegExp(r'(?:(?:السعر|Price)[:：]?\**\**)?(?:\s*[:-])?\s*([\d,\.]+)')
-        .firstMatch(block)
-        ?.group(1)
-        ?.replaceAll(',', '')
-        ?.trim();
+    for (final block in unitBlocks) {
+      print('🔍 block:\n$block');
 
-    final price = priceText != null ? '$priceText جنيه' : null;
-
-  final rooms = int.tryParse(
-  RegExp(r'(?:عدد الغرف|غرف النوم|Bedrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
-
+      final title = RegExp(r'في\s+[\"“”]?(.+?)(?=[\"”])')
           .firstMatch(block)
-          ?.group(1) ?? '',
-    );
+          ?.group(1)
+          ?.trim();
 
-final baths = int.tryParse(
-  RegExp(r'(?:عدد الحمامات|الحمامات|Bathrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
-
+      final location = RegExp(
+              r'(?:(?:الموقع|Location)[:：]?\**\**)?(?:\s*[:-])?\s*(الشيخ زايد|القاهرة الجديدة|[^\n،.]+)')
           .firstMatch(block)
-          ?.group(1) ?? '',
+          ?.group(1)
+          ?.trim();
+
+      final sizeText = RegExp(
+              r'(?:(?:المساحة|Size|المساحة الواسعة)[:：]?\**\**)?(?:\s*[:-])?\s*([\d,\.]+)\s*(?:متر)?')
+          .firstMatch(block)
+          ?.group(1)
+          ?.replaceAll(',', '')
+          ?.trim();
+      final locationLink = RegExp(r'\[رابط الموقع\]\((https?:\/\/[^\s)]+)\)')
+          .firstMatch(block)
+          ?.group(1);
+
+// final priceText = RegExp(
+//   r'(?:\*\*?)?\s*(?:💰)?\s*(?:السعر|Price)\s*(?:[:：])?\s*\*{0,2}?\s*([\d,.]+)',
+//   caseSensitive: false,
+// ).firstMatch(block)?.group(1)?.replaceAll(',', '')?.trim();
+
+      final priceText =
+          RegExp(r'(?:السعر|Price)[\s:：\-\*]*([\d,\.]+)', caseSensitive: false)
+              .firstMatch(block)
+              ?.group(1)
+              ?.replaceAll(',', '')
+              ?.trim();
+
+      print("🎯 Extracted price text: $priceText");
+
+      final price = priceText != null ? '$priceText جنيه' : null;
+      print("📦 Final Unit price: $price");
+      final rooms = int.tryParse(
+        RegExp(r'(?:عدد الغرف|غرف النوم|Bedrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
+                .firstMatch(block)
+                ?.group(1) ??
+            '',
+      );
+
+      final baths = int.tryParse(
+        RegExp(r'(?:عدد الحمامات|الحمامات|Bathrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
+                .firstMatch(block)
+                ?.group(1) ??
+            '',
+      );
+final locationLink2 = RegExp(r'\[(?:رابط الموقع|شوف الموقع)\]\((https?:\/\/[^\s)]+)\)')
+    .firstMatch(block)
+    ?.group(1);
+
+      final description = RegExp(
+        r'(?:الوصف|التفاصيل|تقسيط|نظام الدفع|خطة الدفع|المميزات|Description|Features)[:：]?\**\**?\s*[:-]?\s*(.+)',
+        caseSensitive: false,
+      ).firstMatch(block)?.group(1)?.trim();
+
+      final imageUrl = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+)\)')
+          .firstMatch(block)
+          ?.group(1);
+
+      int? totalSize = sizeText != null ? int.tryParse(sizeText) : null;
+      print(totalSize);
+
+      if (imageUrl == null) continue;
+
+      units.add(UnitModel(
+        type: location ?? "غير محدد",
+        location: locationLink2 ,
+        price: (price != null && price.isNotEmpty) ? '$price ' : "غير متوفر",
+        size: totalSize,
+        rooms: rooms,
+        bathrooms: baths,
+        description: description,
+        images: [imageUrl],
+      ));
+    }
+
+    return UnitExtractionResult(
+      introText: intro,
+      units: units,
     );
-
-final description = RegExp(
-  r'(?:الوصف|التفاصيل|تقسيط|نظام الدفع|خطة الدفع|المميزات|Description|Features)[:：]?\**\**?\s*[:-]?\s*(.+)',
-
-      caseSensitive: false,
-    ).firstMatch(block)?.group(1)?.trim();
-
-    final imageUrl = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+)\)').firstMatch(block)?.group(1);
-
-    int? totalSize = sizeText != null ? int.tryParse(sizeText) : null;
-
-    if (imageUrl == null) continue;
-
-    units.add(UnitModel(
-      type: title ?? "غير محدد",
-      location: location ?? "غير محدد",
-      price: (price != null && price.isNotEmpty) ? '$price ' : "غير متوفر",
-      size: totalSize,
-      rooms: rooms,
-      bathrooms: baths,
-      description: description,
-      images: [imageUrl],
-    ));
   }
-
-  return UnitExtractionResult(
-    introText: intro,
-    units: units,
-  );
-}
 
 //   UnitExtractionResult extractUnitsWithIntro(String text) {
 //     final List<UnitModel> units = [];
@@ -170,9 +195,6 @@ final description = RegExp(
 // final price = priceMatch?.group(1)?.replaceAll(',', '').trim();
 
 // print("💰 Extracted price: $price");
-
-
-
 
 //       final location =
 //           RegExp(r'الموقع[:：]?\s*(.*)').firstMatch(block)?.group(1)?.trim();
@@ -227,8 +249,6 @@ final description = RegExp(
 //       units: units,
 //     );
 //   }
-
-
 
 //   List<UnitModel> _extractUnitsFromText(String text) {
 //     final unitBlocks = RegExp(r'(\d+\.\s+\*\*(.*?)\*\*.*?)(?=(\n\d+\.|\Z))', dotAll: true)
@@ -308,7 +328,6 @@ final description = RegExp(
     final hasIntroOrUnits = _extractedUnits.isNotEmpty &&
         (_extractedUnits.first.introText != null ||
             _extractedUnits.first.units.isNotEmpty);
-
     if (hasIntroOrUnits) {
       final introText = _extractedUnits.first.introText;
       final units = _extractedUnits.first.units;
@@ -318,7 +337,7 @@ final description = RegExp(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            if (introText != null) // ✅ عرض النص التمهيدي فقط لو موجود
+            if (introText != null)
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
@@ -337,19 +356,21 @@ final description = RegExp(
                   style: const TextStyle(color: Colors.white, fontSize: 16),
                 ),
               ),
-            if (units.isNotEmpty) // ✅ عرض الكروت فقط لو فيه وحدات
-              ...units.map((unit) => Padding(
-                    key: ValueKey(unit),
-                    padding: const EdgeInsets.only(bottom: 12.0),
-                    child: UnitItem(
-                      unit,
-                      // isFavorite: false,
-                      // onTap: () {},
-                    ),
-                  )),
+
+            // ✅ اعرض الوحدات فقط
+            ...units.map((unit) => Padding(
+                  key: ValueKey(unit),
+                  padding: const EdgeInsets.only(bottom: 12.0),
+                  child: UnitItem(unit),
+                )),
           ],
         ),
       );
+    }
+
+// ✅ لو locationLink موجود ومفيش وحدات -> اعرضه لوحده
+    if (_extractedUnits.isEmpty && _standaloneLocationLink != null) {
+      return ChatLocationPreviewMap(locationLink: _standaloneLocationLink!);
     }
 
     // 👇 fallback لو مفيش وحدات ولا نص تمهيدي

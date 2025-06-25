@@ -3,7 +3,9 @@ import 'package:broker/core/theming/colors.dart';
 import 'package:broker/feature/chat/data/model/bo_response_model.dart';
 import 'package:broker/feature/chat/data/model/chat_model.dart';
 import 'package:broker/feature/chat/ui/screen/chat_voice.dart';
+import 'package:broker/feature/chat/ui/screen/test.dart';
 import 'package:broker/feature/chat/ui/screen/voice_chat_screen.dart';
+import 'package:broker/feature/map/ui/map_screen.dart';
 import 'package:broker/feature/profie/logic/profile_cubit.dart';
 import 'package:broker/feature/screen/side_menu.dart';
 import 'package:broker/generated/l10n.dart';
@@ -141,6 +143,8 @@ return _buildChatList(chatList, context, state);
 },
 ),
                 ),
+                
+// ChatLocationPreview(latitude: 30.002165148149373, longitude:  30.974464501204057,),
                 _buildBottomChatInput(context),
               ],
             ),
@@ -311,6 +315,8 @@ Widget _buildChatList(
                   );
                 }
               },
+          
+             
               borderRadius: BorderRadius.circular(50),
               child: Container(
                 padding: const EdgeInsets.all(10),

@@ -2,6 +2,7 @@ import 'package:broker/core/sharedWidgets/network_image.dart';
 import 'package:broker/core/sharedWidgets/property_card.dart';
 import 'package:broker/core/theming/styles.dart';
 import 'package:broker/feature/home/data/models/unit_model.dart';
+import 'package:broker/feature/map/ui/map_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import '../../feature/unitDetails/ui/screen/unit_details_screen.dart';
@@ -15,16 +16,21 @@ class UnitItem extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.all(10.0),
       child: GestureDetector(
-        onDoubleTap: (){
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => UnitDetailsScreen(
-                unit:unit, // Replace 'someUnitModel' with the actual UnitModel object
-              ),
-            ),
-          );
-        },
+     onTap: () {
+  showDialog(
+    context: context,
+    barrierDismissible: true,
+    barrierColor: Colors.black.withOpacity(0.5),
+    builder: (BuildContext context) {
+      return Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: UnitDetailsScreen(unit: unit),
+      );
+    },
+  );
+},
+
         child: Container(
           width: 362.w,
           height: 495.h,
@@ -85,7 +91,10 @@ class UnitItem extends StatelessWidget {
                 Padding(
                   padding: const EdgeInsets.only(top: 6,bottom: 6),
                   child: PropertyCard(location: unit.location??"not valid location ", type:unit.type??"not valid type ", price: unit.price??"not valid price",),
-                )
+                ),
+      //            unit.location != null
+      // ? ChatLocationPreview(locationLink: unit.location!)
+      // : const SizedBox(),
               ],
             ),
           ),

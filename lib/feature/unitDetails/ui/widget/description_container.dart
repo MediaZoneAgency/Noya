@@ -10,7 +10,6 @@ import 'package:flutter_svg/svg.dart';
 import '../../../../core/theming/colors.dart';
 import '../../../../core/theming/styles.dart';
 
-
 class DetailsContainer extends StatelessWidget {
   const DetailsContainer({
     super.key,
@@ -18,18 +17,19 @@ class DetailsContainer extends StatelessWidget {
     required this.bathroom,
     required this.space,
     required this.description,
+    required this.price
   });
 
   final int bedroom;
   final int bathroom;
   final int space;
   final String description;
+  final String price;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       width: 350.w,
-
       decoration: BoxDecoration(
         borderRadius: const BorderRadius.all(Radius.circular(30)),
         border: Border.all(color: ColorsManager.mediumDarkGray),
@@ -39,6 +39,20 @@ class DetailsContainer extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text(
+              'Price',
+              style: TextStyles.urbanistSemiBold18Light,
+            ),
+            SizedBox(height: 8.h),
+            Text(
+             price,
+              style: TextStyles.urbanistMedium14LightGray,
+            ),
+            const Divider(
+              height: 20,
+              thickness: 1,
+              color: ColorsManager.mediumDarkGray,
+            ),
             Text(
               'Description',
               style: TextStyles.urbanistSemiBold18Light,
