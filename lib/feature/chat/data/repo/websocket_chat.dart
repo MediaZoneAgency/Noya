@@ -35,7 +35,7 @@ class WebSocketService {
       }
 
       final uri =
-          Uri.parse('wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/')
+          Uri.parse('wss://real-estate-chatbot-4lmcjvi3xq-ww.a.run.app/ws/')
               .replace(queryParameters: {'user_id': userId});
 
       print("🌐 Connecting to WebSocket: $uri");
