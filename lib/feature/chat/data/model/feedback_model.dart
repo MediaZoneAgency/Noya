@@ -1,75 +1,27 @@
-class FeedbackModel {
-  String? sessionId;
-  String? message;
-  String? feedbackType;
-  String? comment;
+// ✅ الكود الجديد لـ feedback_model.dart
 
-//<editor-fold desc="Data Methods">
+class FeedbackModel {
+  final String messageId;
+  final String userId;
+  final String feedbackType;
+  final String? comment;
+
   FeedbackModel({
-    this.sessionId,
-    this.message,
-    this.feedbackType,
+    required this.messageId,
+    required this.userId,
+    required this.feedbackType,
     this.comment,
   });
 
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is FeedbackModel &&
-          runtimeType == other.runtimeType &&
-          sessionId == other.sessionId &&
-          message == other.message &&
-          feedbackType == other.feedbackType &&
-          comment == other.comment);
-
-  @override
-  int get hashCode =>
-      sessionId.hashCode ^
-      message.hashCode ^
-      feedbackType.hashCode ^
-      comment.hashCode;
-
-  @override
-  String toString() {
-    return 'FeedbackModel{' +
-        ' sessionId: $sessionId,' +
-        ' message: $message,' +
-        ' feedbackType: $feedbackType,' +
-        ' comment: $comment,' +
-        '}';
-  }
-
-  FeedbackModel copyWith({
-    String? sessionId,
-    String? message,
-    String? feedbackType,
-    String? comment,
-  }) {
-    return FeedbackModel(
-      sessionId: sessionId ?? this.sessionId,
-      message: message ?? this.message,
-      feedbackType: feedbackType ?? this.feedbackType,
-      comment: comment ?? this.comment,
-    );
-  }
-
+  // دالة لتحويل الكائن إلى Map لإرساله كـ JSON للـ API
   Map<String, dynamic> toMap() {
     return {
-      'sessionId': this.sessionId,
-      'message': this.message,
-      'feedbackType': this.feedbackType,
-      'comment': this.comment,
+      'message_id': this.messageId,
+      'user_id': this.userId,
+      'feedback_type': this.feedbackType,
+      'comment': this.comment ?? "", // أرسل نصًا فارغًا إذا كان التعليق null
     };
   }
 
-  factory FeedbackModel.fromMap(Map<String, dynamic> map) {
-    return FeedbackModel(
-      sessionId: map['sessionId'],
-      message: map['message'] ,
-      feedbackType: map['feedbackType'] ,
-      comment: map['comment'] ,
-    );
-  }
-
-//</editor-fold>
+  // يمكنك ترك باقي الدوال (copyWith, toString, etc.) أو إزالتها لأنها قد لا تكون ضرورية الآن
 }

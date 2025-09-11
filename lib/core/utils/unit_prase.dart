@@ -23,7 +23,7 @@ UnitModel parseUnitFromAI(String response) {
     location: location,
     images: [
       "https://via.placeholder.com/300" // صورة افتراضية مؤقتة
-    ],
+    ], 
   );
 }
 

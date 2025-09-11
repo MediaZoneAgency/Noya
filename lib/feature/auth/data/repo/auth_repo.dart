@@ -18,7 +18,11 @@ class AuthService {
 
   Future<Either<ApiErrorModel, RegisterResponseModel>> register(RegisterModel registerModel) async {
     try {
-      final response = await _dio.post(NetworkConstant.regsit, data: registerModel.toMap());
+      final response = await _dio.post(NetworkConstant.regsit, data: registerModel.toMap(),
+         options: Options(
+          headers: {'Accept': 'application/json'},
+        ),
+      );
 
 
       return Right(RegisterResponseModel.fromMap(response.data));
@@ -81,7 +85,10 @@ class AuthService {
  // }
   Future<Either<ApiErrorModel, LoginResponseModel>> login(LogInModel loginModel) async {
     try {
-      final response = await _dio.post(NetworkConstant.login, data: loginModel.toMap());
+      final response = await _dio.post(NetworkConstant.login, data: loginModel.toMap(),
+       options: Options(
+          headers: {'Accept': 'application/json'},
+        ),);
 
 
       return Right(LoginResponseModel.fromMap(response.data));

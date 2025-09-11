@@ -30,8 +30,8 @@ class GuestProfile extends StatelessWidget {
             verticalSpace(8.h),
             GestureDetector(
               onTap: (){
-                context.pushNamedAndRemoveUntil(Routes.signUpScreen,
-                    predicate: (Route<dynamic> route) => false);
+                // context.pushNamedAndRemoveUntil(Routes.signUpScreen,
+                //     predicate: (Route<dynamic> route) => false);
               },
               child: Container(
                 height: 40.h,

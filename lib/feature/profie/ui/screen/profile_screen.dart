@@ -86,8 +86,8 @@ if (ProfileCubit.get(context).profileUser != null) {
                       DioFactory.removeTokenIntoHeaderAfterLogout();
                       NavBarCubit.get(context).changeIndex(0);
                       ProfileCubit.get(context).profileUser=null;
-                      context.pushNamedAndRemoveUntil(Routes.signUpScreen,
-                          predicate: (Route<dynamic> route) => false);
+                      // context.pushNamedAndRemoveUntil(Routes.signUpScreen,
+                      //     predicate: (Route<dynamic> route) => false);
                     },
                   ),
                   Center(

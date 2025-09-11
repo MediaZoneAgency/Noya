@@ -38,50 +38,49 @@ class _LoginScreenState extends State<LoginScreen> {
     phoneEditingController.dispose();
     super.dispose();
   }
+@override
+Widget build(BuildContext context) {
+  return Scaffold(
+       backgroundColor: Colors.transparent,
+    body: SafeArea(
+      child: Stack(
+            fit: StackFit.expand,
+        children: [
+          // 🌄 Background Image
+          Positioned.fill(
+            child:   Image.asset(
+            'assets/img/image 2.png',
+            fit: BoxFit.cover,
+          ),
+          ),
 
-  @override
-  Widget build(BuildContext context) {
-        return Scaffold(
-          body: SafeArea(
+          // 🧾 Main content
+          SingleChildScrollView(
             child: Padding(
               padding: EdgeInsets.symmetric(horizontal: 30.w, vertical: 90.h),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    verticalSpace(45),
-                    Center(
-                      child: Text(
-                        S.of(context).Login,
-                        style: TextStyles.latoBold28DarkBlack,
-                      ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  verticalSpace(45),
+                  Center(
+                    child: Text(
+                      S.of(context).Login,
+                      style: TextStyles.latoBold28DarkBlack,
                     ),
-                    verticalSpace(40),
-                    LoginForm(),
-                    verticalSpace(40),
-                    // Center(
-                    //   child: GestureDetector(
-                    //     onTap: () {
-                    //       Navigator.pushNamed(
-                    //           context, Routes.navBarScreen);
-                    //     },
-                    //     child: Text(S.of(context).continueasguest,
-                    //         style:
-                    //         TextStyles.latoBold15BlueBlack.copyWith(
-
-                    //             decoration: TextDecoration.underline,
-                    //             decorationColor: TextStyles.latoBold15BlueBlack.color
-
-                    //         )),
-                    //   ),
-                    // ),
-                     SignInStateUi(),
-                  ],
-                ),
+                  ),
+                  verticalSpace(40),
+                  LoginForm(),
+                  verticalSpace(40),
+                  SignInStateUi(),
+                ],
               ),
             ),
           ),
-        );
+        ],
+      ),
+    ),
+  );
+}
 
-  }
+
 }

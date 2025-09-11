@@ -48,7 +48,7 @@ class MessageLookup extends MessageLookupByLibrary {
     ),
     "ApartmentNum": MessageLookupByLibrary.simpleMessage("Apartment num"),
     "ApartmentNumDes": MessageLookupByLibrary.simpleMessage("Apartment num"),
-    "Arabic": MessageLookupByLibrary.simpleMessage("Arabic"),
+    "Arabic": MessageLookupByLibrary.simpleMessage("العربية"),
     "AreYouSure": MessageLookupByLibrary.simpleMessage("Are you sure?"),
     "BuildingNumber": MessageLookupByLibrary.simpleMessage("Building Number"),
     "BuildingNumberDes": MessageLookupByLibrary.simpleMessage(
@@ -75,7 +75,10 @@ class MessageLookup extends MessageLookupByLibrary {
     "CityName": MessageLookupByLibrary.simpleMessage("City name"),
     "CityNameDes": MessageLookupByLibrary.simpleMessage("Enter Your city name"),
     "ConfirmPassword": MessageLookupByLibrary.simpleMessage("Confirm Password"),
+    "ContactUs": MessageLookupByLibrary.simpleMessage("Contact Us"),
     "Country": MessageLookupByLibrary.simpleMessage("Country"),
+    "Dark": MessageLookupByLibrary.simpleMessage("Dark"),
+    "DarkMode": MessageLookupByLibrary.simpleMessage("Dark Mode"),
     "Delete": MessageLookupByLibrary.simpleMessage("Delete"),
     "DeleteAccount": MessageLookupByLibrary.simpleMessage("Delete Account"),
     "DeleteYourAccount": MessageLookupByLibrary.simpleMessage(
@@ -154,10 +157,12 @@ class MessageLookup extends MessageLookupByLibrary {
     "HelloWelcome": MessageLookupByLibrary.simpleMessage(
       "Hello, Welcome back You’ve been missed",
     ),
+    "HelpFAQ": MessageLookupByLibrary.simpleMessage("Help & FAQ"),
     "Home": MessageLookupByLibrary.simpleMessage("Home"),
     "HowCanIHeYou": MessageLookupByLibrary.simpleMessage("How Can I Help You"),
     "Language": MessageLookupByLibrary.simpleMessage("Language"),
     "Lastestsearch": MessageLookupByLibrary.simpleMessage("Lastest search"),
+    "LightMode": MessageLookupByLibrary.simpleMessage("Light Mode"),
     "Login": MessageLookupByLibrary.simpleMessage("Login"),
     "LoginSignup": MessageLookupByLibrary.simpleMessage("Login/Signup"),
     "Logout": MessageLookupByLibrary.simpleMessage("Logout"),
@@ -172,6 +177,7 @@ class MessageLookup extends MessageLookupByLibrary {
     "NoAccount": MessageLookupByLibrary.simpleMessage(
       "Don\'t have an account?",
     ),
+    "Notification": MessageLookupByLibrary.simpleMessage("Notification"),
     "Notifications": MessageLookupByLibrary.simpleMessage("Notifications"),
     "OTP": MessageLookupByLibrary.simpleMessage("OTP"),
     "OldPassword": MessageLookupByLibrary.simpleMessage("Old Password"),
@@ -252,9 +258,11 @@ class MessageLookup extends MessageLookupByLibrary {
     "alreadyAddedToCart": MessageLookupByLibrary.simpleMessage(
       "Already added to cart",
     ),
+    "arabic": MessageLookupByLibrary.simpleMessage("العربية"),
     "bestfeatures": MessageLookupByLibrary.simpleMessage(
       "best features with courses as low as EGP 399.99",
     ),
+    "bookings": MessageLookupByLibrary.simpleMessage("Bookings"),
     "buynow": MessageLookupByLibrary.simpleMessage("Buy Now"),
     "connectionTimeoutWithTheServer": MessageLookupByLibrary.simpleMessage(
       "Connection timeout with the server",
@@ -266,14 +274,24 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Connection to the server failed due to internet connection",
         ),
+    "contactUs": MessageLookupByLibrary.simpleMessage("Contact Us"),
     "continueasguest": MessageLookupByLibrary.simpleMessage(
       "Continue as guest",
     ),
     "createAccount": MessageLookupByLibrary.simpleMessage("Create Account"),
+    "dark": MessageLookupByLibrary.simpleMessage("Dark"),
+    "darkMode": MessageLookupByLibrary.simpleMessage("Dark Mode"),
     "editaccount": MessageLookupByLibrary.simpleMessage("Edit Account"),
+    "english": MessageLookupByLibrary.simpleMessage("English"),
+    "favourite": MessageLookupByLibrary.simpleMessage("Favourite"),
+    "helpFaq": MessageLookupByLibrary.simpleMessage("Help & FAQ"),
+    "language": MessageLookupByLibrary.simpleMessage("Language"),
+    "lightMode": MessageLookupByLibrary.simpleMessage("Light Mode"),
+    "likes": MessageLookupByLibrary.simpleMessage("Likes"),
     "namecannotbeempty": MessageLookupByLibrary.simpleMessage(
       "Name cannot be empty",
     ),
+    "notification": MessageLookupByLibrary.simpleMessage("Notification"),
     "passwordcannotbeempty": MessageLookupByLibrary.simpleMessage(
       "Password cannot be empty",
     ),
@@ -294,6 +312,7 @@ class MessageLookup extends MessageLookupByLibrary {
         MessageLookupByLibrary.simpleMessage(
           "Send timeout in connection with the server",
         ),
+    "settings": MessageLookupByLibrary.simpleMessage("Settings"),
     "sign_in": MessageLookupByLibrary.simpleMessage("Sign in"),
     "somethingWentWrong": MessageLookupByLibrary.simpleMessage(
       "Something went wrong",

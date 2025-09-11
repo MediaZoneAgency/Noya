@@ -1,107 +1,112 @@
+// هذا هو الكود الصحيح والمعدل، قم بنسخه بالكامل
+
 import 'dart:convert';
-import 'dart:developer'; // لإجراء التحويل من JSON إلى قائمة
 
 class UnitModel {
-  int? id;
-  int? project_id;
-  String? type;
-  int? size;
-  String? price;
-  String? location;
-  String? location_link;
-  String? description;
-  String? listOfDescription;
-  List<dynamic>? images;
-  int? bathrooms;
-  int? rooms;
-  int? has_garden;
-  int? garden_size;
-  int? has_roof;
-  int? roof_size;
-  String? status;
-  String? created_at;
-  String? updated_at;
-  Map<dynamic, dynamic>? sales_info;
+  final int? id;
+  final int? projectId;
+  final String? type;
+  final int? size;
+  final String? price;
+  final String? location;
+  final String? locationLink;
+  final String? description;
+  final List<dynamic>? listOfDescription; // الـ API يرسلها كقائمة فارغة []
+  final List<String>? images;
+  final int? bathrooms;
+  final int? rooms;
+  final bool? hasGarden; // ✅ تم التصحيح: من int? إلى bool?
+  final int? gardenSize;
+  final bool? hasRoof;   // ✅ تم التصحيح: من int? إلى bool?
+  final int? roofSize;
+  final String? status;
+  final String? createdAt;
+  final String? updatedAt;
+  final Map<String, dynamic>? salesInfo;
 
   UnitModel({
-    this.id,
-    this.project_id,
+   this.id,
+    this.projectId,
     this.type,
     this.size,
     this.price,
     this.location,
-    this.location_link,
+    this.locationLink,
     this.description,
     this.listOfDescription,
     this.images,
     this.bathrooms,
     this.rooms,
-    this.has_garden,
-    this.garden_size,
-    this.has_roof,
-    this.roof_size,
+    this.hasGarden,
+    this.gardenSize,
+    this.hasRoof,
+    this.roofSize,
     this.status,
-    this.created_at,
-    this.updated_at,
-    this.sales_info,
+    this.createdAt,
+    this.updatedAt,
+    this.salesInfo,
   });
 
   factory UnitModel.fromMap(Map<String, dynamic> map) {
-    log('Images field: ${map['images']}'); // أضفه هنا لتسجيل قيمة الحقل
     return UnitModel(
       id: map['id'],
-      project_id: map['project_id'],
+      projectId: map['project_id'],
       type: map['type'],
       size: map['size'],
       price: map['price'],
       location: map['location'],
-      location_link: map['location_link'],
+      locationLink: map['location_link'],
       description: map['description'],
-      listOfDescription: map['listOfDescription'],
-      images: map['images'] is String
-          ? [map['images']] // إذا كان رابط واحد، تحويله إلى قائمة
-          : (map['images'] as List<dynamic>? ?? []), // إذا كانت قائمة، استخدامها كما هي
+      listOfDescription: map['list_of_description'] != null
+          ? List<dynamic>.from(map['list_of_description'])
+          : null,
+      images: map['images'] != null
+          ? List<String>.from(map['images'].map((x) => x.toString())) // ✅ تصحيح تحليل الصور
+          : null,
       bathrooms: map['bathrooms'],
       rooms: map['rooms'],
-      has_garden: map['has_garden'],
-      garden_size: map['garden_size'],
-      has_roof: map['has_roof'],
-      roof_size: map['roof_size'],
+      hasGarden: map['has_garden'], // ✅ أصبح يقرأ bool
+      gardenSize: map['garden_size'],
+      hasRoof: map['has_roof'],     // ✅ أصبح يقرأ bool
+      roofSize: map['roof_size'],
       status: map['status'],
-      created_at: map['created_at'],
-      updated_at: map['updated_at'],
-      sales_info: map['sales_info'],
+      createdAt: map['created_at'],
+      updatedAt: map['updated_at'],
+      salesInfo: map['sales_info'] != null
+          ? Map<String, dynamic>.from(map['sales_info'])
+          : null,
     );
   }
-
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'project_id': project_id,
+      'project_id': projectId,
       'type': type,
       'size': size,
       'price': price,
       'location': location,
-      'location_link': location_link,
+      'location_link': locationLink,
       'description': description,
-      'listOfDescription': listOfDescription,
+      'list_of_description': listOfDescription,
       'images': images,
       'bathrooms': bathrooms,
       'rooms': rooms,
-      'has_garden': has_garden,
-      'garden_size': garden_size,
-      'has_roof': has_roof,
-      'roof_size': roof_size,
+      'has_garden': hasGarden,
+      'garden_size': gardenSize,
+      'has_roof': hasRoof,
+      'roof_size': roofSize,
       'status': status,
-      'created_at': created_at,
-      'updated_at': updated_at,
-      'sales_info': sales_info,
+      'created_at': createdAt,
+      'updated_at': updatedAt,
+      'sales_info': salesInfo,
     };
   }
 
+  factory UnitModel.fromJson(String source) => UnitModel.fromMap(json.decode(source));
+
   @override
   String toString() {
-    return 'UnitModel{id: $id, project_id: $project_id, type: $type, size: $size, price: $price, location: $location, location_link: $location_link, description: $description, listOfDescription: $listOfDescription, images: $images, bathrooms: $bathrooms, rooms: $rooms, has_garden: $has_garden, garden_size: $garden_size, has_roof: $has_roof, roof_size: $roof_size, status: $status, created_at: $created_at, updated_at: $updated_at, sales_info: $sales_info}';
+    return 'UnitModel(id: $id, type: $type, has_garden: $hasGarden, has_roof: $hasRoof)';
   }
 }

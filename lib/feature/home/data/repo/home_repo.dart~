@@ -1,0 +1,125 @@
+import 'dart:developer';
+
+import 'package:broker/core/error/error_model.dart';
+import 'package:broker/core/network/network_constant.dart';
+import 'package:broker/feature/booking/data/models/booking,odel.dart';
+import 'package:broker/feature/home/data/models/unit_model.dart';
+import 'package:dartz/dartz.dart';
+import 'package:dio/dio.dart';
+
+import '../../../../core/error/failure.dart';
+import '../../../../core/helpers/cash_helper.dart';
+
+class HomeRepo {
+  final Dio _dio;
+
+  HomeRepo(this._dio);
+
+  Future<Either<ApiErrorModel, List<UnitModel>>> fetchUnits() async {
+    List<UnitModel> units = [];
+    try {
+        var response = await _dio.get(NetworkConstant.unitsTypes);
+
+      for (var item in response.data) {
+
+        units.add(UnitModel.fromMap(item));
+        log('no');
+      }
+      return right(units);
+    } catch (e) {
+
+      return left(ApiErrorHandler.handle(e));
+    }
+  }
+  Future<Either<ApiErrorModel, List<UnitModel>>> fetchUnitsTypes(String type) async {
+
+    List<UnitModel> units = [];
+    try {
+      var response = await _dio.get(NetworkConstant.unitsTypes,queryParameters: {'type': type});
+
+      for (var item in response.data) {
+        units.add(UnitModel.fromMap(item));
+      }
+      return Right(units);
+    } catch (e) {
+
+      return left(ApiErrorHandler.handle(e));
+    }
+
+  }  Future<Either<ApiErrorModel, List<BookingModel>>> fetchUserBookings() async {
+    try {
+      // 1. Retrieve the token from local storage
+      final token = await CashHelper.getStringSecured(key: Keys.token);
+
+      if (token == null) {
+        // Handle case where user is not logged in
+        return Left(ApiErrorModel(message: "User not authenticated."));
+      }
+      
+      // 2. Add the token to the request options
+      final response = await _dio.get(
+        NetworkConstant.userBookings,
+        options: Options(
+          headers: {
+            'Authorization': 'Bearer $token',
+          },
+        ),
+      );
+
+      final List<dynamic> bookingData = response.data['data']['bookings'];
+      
+      final List<BookingModel> bookings = bookingData
+          .map((bookingJson) => BookingModel.fromJson(bookingJson))
+          .toList();
+          
+      return Right(bookings);
+
+    } catch (e) {
+      return Left(ApiErrorHandler.handle(e));
+    }
+  }
+  Future<UnitModel> fetchUnitById(int unitId) async {
+    // ⭐️⭐️ نقطة مهمة جداً: يجب أن تحصل على توكن المصادقة الخاص بالمستخدم
+    // هذا التوكن غالباً ما يكون مخزناً في SharedPreferences بعد تسجيل الدخول
+    const String userAuthToken = "هنا يجب وضع توكن المستخدم الحقيقي";
+
+    if (userAuthToken == "هنا يجب وضع توكن المستخدم الحقيقي") {
+      // هذا الشرط سيمنع استمرار الكود إذا لم تغير التوكن
+      throw Exception("من فضلك أدخل توكن المصادقة الصحيح في الكود");
+    }
+
+    // إنشاء نسخة جديدة وبسيطة من dio
+    final dio = Dio();
+
+    // هذا هو الرابط الصحيح من Postman
+    final url = 'https://noyaai.com/api/units/$unitId';
+
+    try {
+      // إرسال الطلب مع الـ Headers الصحيحة (أهمها الـ Authorization)
+      final response = await dio.get(
+        url,
+        options: Options(
+          headers: {
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $userAuthToken', // ⬅️ هذا هو أهم سطر
+          },
+        ),
+      );
+
+      // التحقق من نجاح الطلب
+      if (response.statusCode == 200) {
+        // تحليل البيانات مباشرة من response.data كما في Postman
+        return UnitModel.fromMap(response.data);
+      } else {
+        // في حالة فشل الطلب
+        throw Exception('Failed to load unit details. Status code: ${response.statusCode}');
+      }
+    } catch (e) {
+      // في حالة حدوث أي خطأ آخر أثناء الاتصال
+      print("Error in fetchUnitById: $e");
+      throw Exception('Failed to fetch unit details.');
+    }
+  }
+}
+
+

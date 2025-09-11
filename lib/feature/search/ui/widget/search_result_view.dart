@@ -24,8 +24,8 @@ class SearchResultView extends StatelessWidget {
     if (SearchCubit.get(context).searchResults.isNotEmpty) {
       return Column(
         children: [
-          ...SearchCubit.get(context)
-              .searchResults.map((e)=>UnitItem(e))
+          // ...SearchCubit.get(context)
+          //     .searchResults.map((e)=>UnitItem(e))
 
         ],
       );

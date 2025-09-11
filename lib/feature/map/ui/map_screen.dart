@@ -240,6 +240,9 @@ import '../../../core/theming/styles.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:flutter/material.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class ChatLocationPreviewMap extends StatefulWidget {
   final String locationLink;
@@ -252,55 +255,49 @@ class ChatLocationPreviewMap extends StatefulWidget {
 
 class _ChatLocationPreviewMapState extends State<ChatLocationPreviewMap> {
   late final WebViewController _controller;
-  String? resolvedUrl;
   bool isLoading = true;
   bool hasError = false;
 
   @override
   void initState() {
     super.initState();
-    resolveShortUrl(widget.locationLink);
+    _loadWebView(widget.locationLink);
   }
 
-  Future<void> resolveShortUrl(String shortUrl) async {
+  void _loadWebView(String url) {
     try {
-      final response = await http.head(Uri.parse(shortUrl), headers: {
-        'Accept': '*/*',
-        'User-Agent': 'Mozilla/5.0',
-      });
-
-      final location = response.headers['location'];
-      if (location != null) {
-        setState(() {
-          resolvedUrl = location;
-        });
-        _loadWebView(location);
-      } else {
-        throw Exception("No redirect found");
-      }
+      _controller = WebViewController()
+        ..setJavaScriptMode(JavaScriptMode.unrestricted)
+        ..setNavigationDelegate(
+          NavigationDelegate(
+            onPageStarted: (_) => setState(() => isLoading = true),
+            onPageFinished: (_) => setState(() => isLoading = false),
+            onWebResourceError: (error) {
+              setState(() {
+                hasError = true;
+                isLoading = false;
+              });
+              _openInExternalApp(widget.locationLink);
+            },
+          ),
+        )
+        ..loadRequest(Uri.parse(url));
     } catch (e) {
       setState(() {
         hasError = true;
         isLoading = false;
       });
-      debugPrint("❌ Failed to resolve URL: $e");
+      _openInExternalApp(widget.locationLink);
     }
   }
 
-  void _loadWebView(String url) {
-    _controller = WebViewController()
-      ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setNavigationDelegate(
-        NavigationDelegate(
-          onPageStarted: (_) => setState(() => isLoading = true),
-          onPageFinished: (_) => setState(() => isLoading = false),
-          onNavigationRequest: (request) {
-            // ✅ امنع إعادة التوجيه داخل WebView
-            return NavigationDecision.navigate;
-          },
-        ),
-      )
-      ..loadRequest(Uri.parse(url));
+  Future<void> _openInExternalApp(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      debugPrint('❌ Could not launch $url');
+    }
   }
 
   @override
@@ -315,17 +312,15 @@ class _ChatLocationPreviewMapState extends State<ChatLocationPreviewMap> {
         clipBehavior: Clip.hardEdge,
         child: Stack(
           children: [
-            if (resolvedUrl != null)
+            if (!hasError)
               WebViewWidget(controller: _controller)
-            else if (hasError)
+            else
               const Center(
                 child: Text(
                   'تعذر تحميل الخريطة',
                   style: TextStyle(color: Colors.redAccent),
                 ),
-              )
-            else
-              const SizedBox.shrink(),
+              ),
             if (isLoading)
               const Center(
                 child: CircularProgressIndicator(),

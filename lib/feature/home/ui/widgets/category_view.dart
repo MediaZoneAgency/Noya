@@ -24,9 +24,9 @@ class CategoryView extends StatelessWidget {
       return Column(
         children: [
 
-          ...HomeCubit.get(context)
-              .unitsByCategory[HomeCubit.get(context).
-          currentCategory]!.map((e)=>UnitItem(e))
+          // ...HomeCubit.get(context)
+          //     .unitsByCategory[HomeCubit.get(context).
+          // currentCategory]!.map((e)=>UnitItem(e))
 
         ],
       );

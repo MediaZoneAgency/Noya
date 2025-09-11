@@ -13,6 +13,7 @@ class DioFactory {
 
     if (dio == null) {
       dio = Dio(
+        
 
         BaseOptions(
           baseUrl: NetworkConstant.baseUrl,

@@ -1,24 +1,30 @@
+// lib/feature/chat/ui/screen/voice_chat_screen.dart
+
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
-import 'dart:ui';
+
+import 'package:broker/core/helpers/cash_helper.dart';
+import 'package:broker/feature/chat/ui/widget/chat_widget.dart';
+import 'package:broker/core/theming/styles.dart';
+import 'package:broker/feature/like/logic/fav_cubit.dart';
+import 'package:broker/feature/profie/logic/profile_cubit.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_sound/flutter_sound.dart' as fs;
 import 'package:just_audio/just_audio.dart' as ja;
 import 'package:lottie/lottie.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:web_socket_channel/io.dart';
 import 'package:web_socket_channel/web_socket_channel.dart';
 
-import 'package:broker/core/theming/styles.dart';
-import 'package:broker/feature/profie/logic/profile_cubit.dart';
-
-// ---  هذا هو الكلاس المساعد الذي قمنا بإعادته (الحل) ---
-// هذا هو "المبنى الفعلي" الذي يرث من "المخطط"
+/// A custom audio source for the `just_audio` player that streams bytes.
 class StreamingAudioSource extends ja.StreamAudioSource {
-  final StreamController<Uint8List> _audioStreamController;
+  final StreamController<Uint8List> _byteStreamController;
 
-  StreamingAudioSource(
-      this._audioStreamController); // هذا هو الكونستركتور الصحيح
+  StreamingAudioSource(this._byteStreamController);
 
   @override
   Future<ja.StreamAudioResponse> request([int? start, int? end]) async {
@@ -26,15 +32,20 @@ class StreamingAudioSource extends ja.StreamAudioSource {
       sourceLength: null,
       contentLength: null,
       offset: 0,
-      stream: _audioStreamController.stream,
-      // نحدد النوع هنا ليتطابق مع ما نطلبه من الخادم
-      contentType: 'audio/pcm;rate=16000',
+      stream: _byteStreamController.stream,
+      contentType: 'audio/wav',
     );
   }
 }
 
+/// A full-screen voice chat interface.
 class VoiceChatScreen extends StatefulWidget {
-  const VoiceChatScreen({Key? key}) : super(key: key);
+  final FavCubit favCubit;
+
+  const VoiceChatScreen({
+    Key? key,
+    required this.favCubit,
+  }) : super(key: key);
 
   @override
   State<VoiceChatScreen> createState() => _VoiceChatScreenState();
@@ -44,27 +55,79 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
   final recorder = fs.FlutterSoundRecorder();
   final player = ja.AudioPlayer();
   final wsUrl =
-      'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_01jxvx0pagev7rzteynqzkk8eb&output_format_pcm_16000=true';
+      'wss://api.elevenlabs.io/v1/convai/conversation?agent_id=agent_01jxvx0pagev7rzteynqzkk8eb';
 
   WebSocketChannel? channel;
   StreamSubscription? socketSubscription;
-  StreamSubscription? recorderSubscription;
+  StreamSubscription<Uint8List>? recorderSubscription;
   StreamSubscription? playerStateSubscription;
 
-  final _incomingAudioStreamController =
-      StreamController<Uint8List>.broadcast();
   final _recorderAudioStreamController =
       StreamController<Uint8List>.broadcast();
 
   bool isRecording = false;
+  bool isMuted = false;
   bool isSessionConfirmed = false;
   bool isAgentSpeaking = false;
-  bool _isPlayerConfigured = false;
+
+  final List<int> _audioBuffer = [];
+  Timer? _speechEndTimer;
+
+  String _agentResponseText = "ابدأ المكالمة للتحدث مع المساعد الصوتي";
 
   @override
   void initState() {
     super.initState();
     initRecorderAndPlayer();
+  }
+
+  @override
+  void dispose() {
+    // Ensure all resources are released properly.
+    stopRecording();
+    playerStateSubscription?.cancel();
+    recorder.closeRecorder();
+    player.dispose();
+    _recorderAudioStreamController.close();
+    super.dispose();
+  }
+
+  // --- Core Logic Methods (Unchanged) ---
+
+  Uint8List _createWavHeader() {
+    final header = ByteData(44);
+    const sampleRate = 16000;
+    const numChannels = 1;
+    const bitsPerSample = 16;
+    final byteRate = sampleRate * numChannels * bitsPerSample ~/ 8;
+
+    header.setUint8(0, 0x52); // "R"
+    header.setUint8(1, 0x49); // "I"
+    header.setUint8(2, 0x46); // "F"
+    header.setUint8(3, 0x46); // "F"
+    header.setUint32(4, 0xFFFFFFFF, Endian.little); // ChunkSize (placeholder)
+    header.setUint8(8, 0x57); // "W"
+    header.setUint8(9, 0x41); // "A"
+    header.setUint8(10, 0x56); // "V"
+    header.setUint8(11, 0x45); // "E"
+    header.setUint8(12, 0x66); // "f"
+    header.setUint8(13, 0x6D); // "m"
+    header.setUint8(14, 0x74); // "t"
+    header.setUint8(15, 0x20); // " "
+    header.setUint32(16, 16, Endian.little); // Subchunk1Size
+    header.setUint16(20, 1, Endian.little); // AudioFormat (PCM)
+    header.setUint16(22, numChannels, Endian.little);
+    header.setUint32(24, sampleRate, Endian.little);
+    header.setUint32(28, byteRate, Endian.little);
+    header.setUint16(32, numChannels * bitsPerSample ~/ 8, Endian.little);
+    header.setUint16(34, bitsPerSample, Endian.little);
+    header.setUint8(36, 0x64); // "d"
+    header.setUint8(37, 0x61); // "a"
+    header.setUint8(38, 0x74); // "t"
+    header.setUint8(39, 0x61); // "a"
+    header.setUint32(40, 0xFFFFFFFF, Endian.little); // Subchunk2Size (placeholder)
+
+    return header.buffer.asUint8List();
   }
 
   Future<void> initRecorderAndPlayer() async {
@@ -73,185 +136,225 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
 
     playerStateSubscription = player.playerStateStream.listen((state) {
       if (state.processingState == ja.ProcessingState.completed) {
-        if (isAgentSpeaking && mounted) {
-          print("Agent finished speaking.");
+        if (mounted) {
           setState(() {
             isAgentSpeaking = false;
           });
         }
       }
     });
-  }
+  } void startRecording() async {
 
-  void startRecording() async {
     if (isRecording) return;
     setState(() {
       isRecording = true;
+      _agentResponseText = "جاري الاتصال...";
     });
 
     try {
-      channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      print("🌐 WebSocket connecting...");
+       final userId = await CashHelper.getStringSecured(key: Keys.id);
+      channel = IOWebSocketChannel.connect(
+        Uri.parse(wsUrl),
+        headers: {'user-id':userId,
+        'user_id': userId,
+        },
+      );
 
-      socketSubscription =
-          channel!.stream.listen(_onSocketData, onError: (error) {
-        print(" WebSocket Error: $error");
-        stopRecording();
-      }, onDone: () {
-        print(" WebSocket disconnected.");
-        stopRecording();
-      });
+      socketSubscription = channel!.stream.listen(
+        _onSocketData,
+        onError: (error) => stopRecording(),
+        onDone: () => stopRecording(),
+      );
 
       recorderSubscription =
           _recorderAudioStreamController.stream.listen((buffer) {
-        if (isSessionConfirmed && !isAgentSpeaking && channel != null) {
-          channel!.sink
-              .add(jsonEncode({"user_audio_chunk": base64Encode(buffer)}));
+        
+        // ++++++++++++++++++++++++++++++++++++++++++++++++
+        // VVV           هذا هو التعديل المطلوب           VVV
+        // ++++++++++++++++++++++++++++++++++++++++++++++++
+        // تم إزالة شرط "!isAgentSpeaking" من هنا للسماح بالمقاطعة
+        if (isSessionConfirmed && channel != null && !isMuted) {
+          channel!.sink.add(jsonEncode({"user_audio_chunk": base64Encode(buffer)}));
         }
+        // ++++++++++++++++++++++++++++++++++++++++++++++++
+        // VVV         نهاية التعديل المطلوب              VVV
+        // ++++++++++++++++++++++++++++++++++++++++++++++++
+
       });
 
       await recorder.startRecorder(
+        toFile: 'tau_file.pcm',
         codec: fs.Codec.pcm16,
         toStream: _recorderAudioStreamController.sink,
         sampleRate: 16000,
         numChannels: 1,
       );
     } catch (e) {
-      print("❌ Failed to start recording: $e");
       stopRecording();
     }
-  }
-
-  void _onSocketData(dynamic data) async {
-    print(data);
+  }  void _onSocketData(dynamic data) async {
     if (data is! String) return;
-
     try {
       final decoded = jsonDecode(data) as Map<String, dynamic>;
 
-      if (decoded['audio_event']?['audio_base_64'] != null) {
-        final audioBytes =
-            base64Decode(decoded['audio_event']['audio_base_64']);
-        print("🎤 Received audio chunk: ${audioBytes.length} bytes");
-
-        if (!_isPlayerConfigured) {
-          print("⚙️ Configuring player for streaming...");
-
-          // --- هنا قمنا باستدعاء الكلاس المساعد الصحيح ---
-          final audioSource =
-              StreamingAudioSource(_incomingAudioStreamController);
-
-          await player.setAudioSource(audioSource, preload: false);
-          _isPlayerConfigured = true;
-
-          _incomingAudioStreamController.add(audioBytes);
-          player.play();
-
-          if (mounted) {
-            setState(() {
-              isAgentSpeaking = true;
-            });
-          }
-        } else {
-          _incomingAudioStreamController.add(audioBytes);
-        }
-      } else if (decoded['type'] == 'conversation_initiation_metadata') {
-        print(
-            "✅ Server confirms settings: ${decoded['conversation_initiation_metadata_event']}");
-        if (mounted) {
-          setState(() {
-            isSessionConfirmed = true;
-          });
-        }
-      } else if (decoded['type'] == 'agent_response') {
-        final agentText = decoded['agent_response_event']?['agent_response'];
-        if (agentText != null) print("🤖 Agent Response Text: $agentText");
+      if (decoded.containsKey('audio_event')) {
+        final audioBase64 = decoded['audio_event']['audio_base_64'] as String;
+        final audioBytes = base64Decode(audioBase64);
+        _speechEndTimer?.cancel();
+        _audioBuffer.addAll(audioBytes);
+        if (mounted) setState(() => isAgentSpeaking = true);
+        _speechEndTimer = Timer(const Duration(milliseconds: 500), () {
+          _playBufferedAudio();
+        });
+        return;
       }
+
+      final messageType = decoded['type'] as String?;
+      switch (messageType) {
+        case 'conversation_initiation_metadata':
+          if (mounted) setState(() => isSessionConfirmed = true);
+          break;
+        case 'agent_response':
+          final responseText = decoded['agent_response_event']['agent_response'] as String;
+          if (mounted) setState(() => _agentResponseText = responseText);
+          break;
+        case 'ping':
+          final eventId = decoded['ping_event']['event_id'];
+          channel?.sink.add(jsonEncode({"type": "pong", "event_id": eventId}));
+          break;
+      }
+    } catch (e, s) {
+      print("❌ [ERROR] Processing JSON: $e\n$s\nData: $data");
+    }
+  }
+ImageProvider _safeImageProvider(String? url) {
+  // فاضي/Null → استعمل صورة افتراضية
+  if (url == null || url.trim().isEmpty) {
+    return const AssetImage('assets/img/person.png');
+  }
+  final uri = Uri.tryParse(url.trim());
+
+  // اسمح بس بـ http/https/data (تجاهل file:// في CircleAvatar/Network)
+  if (uri == null ||
+      !(uri.scheme == 'http' || uri.scheme == 'https' || uri.scheme == 'data')) {
+    return const AssetImage('assets/img/person.png');
+  }
+  return NetworkImage(url.trim());
+}
+  Future<void> _playBufferedAudio() async {
+    if (_audioBuffer.isEmpty) {
+      if (mounted) setState(() => isAgentSpeaking = false);
+      return;
+    }
+    final fullAudioData = Uint8List.fromList(_createWavHeader() + _audioBuffer);
+    _audioBuffer.clear();
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/temp_audio.wav');
+      await tempFile.writeAsBytes(fullAudioData, flush: true);
+      await player.setFilePath(tempFile.path);
+      await player.play();
     } catch (e) {
-      print("❌ Error processing server JSON: $e\nData: $data");
+      print("❌ [ERROR] Playing audio: $e");
     }
   }
 
   void stopRecording() async {
-    if (!isRecording) return;
-    print("🛑 Stopping session...");
-
+    if (!isRecording && channel == null) return;
+    _speechEndTimer?.cancel();
+    _audioBuffer.clear();
     if (recorder.isRecording) await recorder.stopRecorder();
     if (player.playing) await player.stop();
-
     await recorderSubscription?.cancel();
     await socketSubscription?.cancel();
     await channel?.sink.close();
     recorderSubscription = null;
     socketSubscription = null;
     channel = null;
-
     if (mounted) {
       setState(() {
         isRecording = false;
         isSessionConfirmed = false;
         isAgentSpeaking = false;
-        _isPlayerConfigured = false;
+        _agentResponseText = "ابدأ المكالمة للتحدث مع المساعد الصوتي";
       });
     }
   }
 
-  @override
-  void dispose() {
-    stopRecording();
-    playerStateSubscription?.cancel();
-    recorder.closeRecorder();
-    player.dispose();
-    _incomingAudioStreamController.close();
-    _recorderAudioStreamController.close();
-    super.dispose();
-  }
+  // --- Build Method (Modified for Full Screen) ---
 
   @override
   Widget build(BuildContext context) {
-    // No changes needed in the build method
-    return Align(
-      alignment: Alignment.center,
-      child: Material(
-        color: Colors.transparent,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(30),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
-            child: Container(
-              width: MediaQuery.of(context).size.width * 0.85,
-              height: MediaQuery.of(context).size.height * 0.85,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
-                borderRadius: BorderRadius.circular(30),
-                border:
-                    Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Icon(Icons.menu, color: Colors.white),
-                      CircleAvatar(
-                        radius: 20,
-                        backgroundImage: NetworkImage(
-                            ProfileCubit.get(context).profileUser?.image ?? ''),
+    return BlocProvider.value(
+      value: widget.favCubit,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        body: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Background Image
+            Image.asset(
+              'assets/img/image 2.png',
+              fit: BoxFit.cover,
+            ),
+            // UI Content
+            SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  children: [
+                    // Top Bar with Back Button and Profile
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+                          onPressed: () {
+                            if (Navigator.canPop(context)) {
+                              Navigator.of(context).pop();
+                            }
+                          },
+                        ),
+                       CircleAvatar(
+  radius: 20,
+  backgroundImage: _safeImageProvider(
+    ProfileCubit.get(context).profileUser?.image,
+  ),
+),
+                      ],
+                    ),
+                    
+                    // ============ START: MODIFIED CODE ============
+                    // This Expanded widget will take all remaining vertical space
+                    Expanded(
+                      // Center will position the content in the middle of the available space
+                      child: Center(
+                        // SingleChildScrollView allows scrolling if the text is too long
+                        child: SingleChildScrollView(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                          child: ChatWidget(
+                            key: ValueKey(_agentResponseText),
+                            msg: _agentResponseText,
+                            chatIndex: 1,
+                            // Bind this to the actual speaking state for better UI feedback
+                            isCurrentlyReceiving: isAgentSpeaking,
+                          ),
+                        ),
                       ),
-                    ],
-                  ),
-                  const Spacer(),
-                  Center(
-                    child: Container(
+                    ),
+                    // ============= END: MODIFIED CODE =============
+
+                    // Bottom Controls Bar
+                    Container(
                       width: double.infinity,
                       height: 80,
                       decoration: BoxDecoration(
                         color: Colors.black.withOpacity(0.3),
                         borderRadius: BorderRadius.circular(40),
                         border: Border.all(
-                            color: Colors.white.withOpacity(0.3), width: 0.5),
+                          color: Colors.white.withOpacity(0.3),
+                          width: 0.5,
+                        ),
                       ),
                       child: Stack(
                         alignment: Alignment.center,
@@ -259,33 +362,55 @@ class _VoiceChatScreenState extends State<VoiceChatScreen> {
                           if (isRecording)
                             Lottie.asset(
                                 'assets/img/Animation - 1748525990399.json'),
-                          ElevatedButton.icon(
-                            icon: Icon(
-                                isRecording ? Icons.call_end : Icons.play_arrow,
-                                color: Colors.white),
-                            label: Text(
-                                isRecording ? 'End the Call' : 'Start Call',
-                                style: TextStyles.sarabunSemiBold32White
-                                    .copyWith(fontSize: 18)),
-                            onPressed:
-                                isRecording ? stopRecording : startRecording,
-                            style: ElevatedButton.styleFrom(
-                              elevation: 0,
-                              backgroundColor: Colors.transparent,
-                              shadowColor: Colors.transparent,
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(40)),
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              IconButton(
+                                icon: Icon(
+                                  isMuted ? Icons.mic_off : Icons.mic,
+                                  color: Colors.white,
+                                  size: 28,
+                                ),
+                                onPressed: () {
+                                  setState(() => isMuted = !isMuted);
+                                },
+                              ),
+                              const SizedBox(width: 16),
+                              Flexible(
+                                child: ElevatedButton.icon(
+                                  icon: Icon(
+                                    isRecording ? Icons.call_end : Icons.play_arrow,
+                                    color: Colors.white,
+                                  ),
+                                  label: Text(
+                                    isRecording ? 'End Call' : 'Start Call',
+                                    style: TextStyles.sarabunSemiBold32White
+                                        .copyWith(fontSize: 18),
+                                    overflow: TextOverflow.ellipsis,
+                                    softWrap: false,
+                                  ),
+                                  onPressed: isRecording ? stopRecording : startRecording,
+                                  style: ElevatedButton.styleFrom(
+                                    elevation: 0,
+                                    backgroundColor: Colors.transparent,
+                                    shadowColor: Colors.transparent,
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(40),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
                     ),
-                  )
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ),
       ),
     );

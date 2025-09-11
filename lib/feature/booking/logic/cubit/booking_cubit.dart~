@@ -1,0 +1,67 @@
+import 'package:bloc/bloc.dart';
+import 'package:broker/feature/booking/data/models/booking,odel.dart';
+import 'package:broker/feature/home/data/models/unit_model.dart';
+import 'package:broker/feature/home/data/repo/home_repo.dart';
+import 'package:meta/meta.dart';
+
+part 'booking_state.dart';
+
+class BookingCubit extends Cubit<BookingState> {
+  final HomeRepo _bookingRepo;
+  List<BookingModel> userBookings = [];
+  List<BookingModel> rawBookings = [];
+
+  // ✅ This new list will hold the full UnitModel details for display
+  List<UnitModel> bookedUnitsDetails = [];
+  BookingCubit(this._bookingRepo) : super(BookingInitial());
+
+ Future<void> getUserBookingsAndDetails() async {
+    emit(GetUserBookingsLoading());
+    final bookingResult = await _bookingRepo.fetchUserBookings();
+
+    bookingResult.fold(
+      (failure) {
+        emit(GetUserBookingsError(failure.message ?? 'Failed to fetch bookings'));
+      },
+      (bookings) async {
+        rawBookings = bookings;
+        // Optional: emit the first success state
+        emit(GetUserBookingsListSuccess(bookings)); 
+        
+        if (bookings.isEmpty) {
+          bookedUnitsDetails = [];
+          // ✅ Emit the new success state with an empty list
+          emit(GetUserBookingsDetailsSuccess([])); 
+          return;
+        }
+
+        try {
+          final List<UnitModel> fetchedUnits = [];
+          
+          final results = await Future.wait(
+            bookings.map((booking) => _bookingRepo.fetchUnitById(booking.propertyId)),
+          );
+
+          for (var result in results) {
+            result.fold(
+              (failure) {
+                print('Failed to fetch a unit detail: ${failure.message}');
+              },
+              (unit) {
+                fetchedUnits.add(unit);
+              },
+            );
+          }
+          
+          bookedUnitsDetails = fetchedUnits;
+          // ✅ Emit the NEW specific success state with the full unit details
+          emit(GetUserBookingsDetailsSuccess(fetchedUnits));
+          
+        } catch (e) {
+          emit(GetUserBookingsError('Failed to fetch property details.'));
+        }
+      },
+    );
+  }
+
+}

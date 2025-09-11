@@ -21,6 +21,7 @@ class HaveAccountText extends StatelessWidget {
               text: text,
               style: TextStyles.latoRegular15lightBlack,
             ),
+        
             TextSpan(
               text: buttonText,
               style: TextStyles.latoBold15BlueBlack,

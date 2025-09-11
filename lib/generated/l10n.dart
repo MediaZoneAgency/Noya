@@ -1070,9 +1070,9 @@ class S {
     return Intl.message('English', name: 'English', desc: '', args: []);
   }
 
-  /// `Arabic`
+  /// `العربية`
   String get Arabic {
-    return Intl.message('Arabic', name: 'Arabic', desc: '', args: []);
+    return Intl.message('العربية', name: 'Arabic', desc: '', args: []);
   }
 
   /// `Add New card`
@@ -1340,12 +1340,6 @@ class S {
     );
   }
 
-  // skipped getter for the 'Terms&Conditions' key
-
-  // skipped getter for the 'Privacy Policy' key
-
-  // skipped getter for the 'About App' key
-
   /// `Settings`
   String get Settings {
     return Intl.message('Settings', name: 'Settings', desc: '', args: []);
@@ -1404,6 +1398,111 @@ class S {
       desc: '',
       args: [],
     );
+  }
+
+  /// `Favourite`
+  String get favourite {
+    return Intl.message('Favourite', name: 'favourite', desc: '', args: []);
+  }
+
+  /// `Help & FAQ`
+  String get helpFaq {
+    return Intl.message('Help & FAQ', name: 'helpFaq', desc: '', args: []);
+  }
+
+  /// `Contact Us`
+  String get contactUs {
+    return Intl.message('Contact Us', name: 'contactUs', desc: '', args: []);
+  }
+
+  /// `Settings`
+  String get settings {
+    return Intl.message('Settings', name: 'settings', desc: '', args: []);
+  }
+
+  /// `English`
+  String get english {
+    return Intl.message('English', name: 'english', desc: '', args: []);
+  }
+
+  /// `العربية`
+  String get arabic {
+    return Intl.message('العربية', name: 'arabic', desc: '', args: []);
+  }
+
+  /// `Language`
+  String get language {
+    return Intl.message('Language', name: 'language', desc: '', args: []);
+  }
+
+  /// `Dark Mode`
+  String get darkMode {
+    return Intl.message('Dark Mode', name: 'darkMode', desc: '', args: []);
+  }
+
+  /// `Light Mode`
+  String get lightMode {
+    return Intl.message('Light Mode', name: 'lightMode', desc: '', args: []);
+  }
+
+  /// `Notification`
+  String get notification {
+    return Intl.message(
+      'Notification',
+      name: 'notification',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Dark`
+  String get dark {
+    return Intl.message('Dark', name: 'dark', desc: '', args: []);
+  }
+
+  /// `Help & FAQ`
+  String get HelpFAQ {
+    return Intl.message('Help & FAQ', name: 'HelpFAQ', desc: '', args: []);
+  }
+
+  /// `Contact Us`
+  String get ContactUs {
+    return Intl.message('Contact Us', name: 'ContactUs', desc: '', args: []);
+  }
+
+  /// `Dark Mode`
+  String get DarkMode {
+    return Intl.message('Dark Mode', name: 'DarkMode', desc: '', args: []);
+  }
+
+  /// `Light Mode`
+  String get LightMode {
+    return Intl.message('Light Mode', name: 'LightMode', desc: '', args: []);
+  }
+
+  /// `Notification`
+  String get Notification {
+    return Intl.message(
+      'Notification',
+      name: 'Notification',
+      desc: '',
+      args: [],
+    );
+  }
+
+  /// `Dark`
+  String get Dark {
+    return Intl.message('Dark', name: 'Dark', desc: '', args: []);
+  }
+
+  /// `Likes`
+  String get likes {
+    return Intl.message('Likes', name: 'likes', desc: '', args: []);
+  }
+
+  /// `Bookings`
+  String get bookings {
+    return Intl.message('Bookings', name: 'bookings', desc: '', args: []);
   }
 }
 

@@ -1,6 +1,7 @@
 import 'package:broker/core/network/dio_factory.dart';
 import 'package:broker/feature/auth/data/repo/auth_repo.dart';
 import 'package:broker/feature/auth/logic/auth_cubit.dart';
+import 'package:broker/feature/booking/logic/cubit/booking_cubit.dart';
 import 'package:broker/feature/chat/data/repo/chat_services.dart';
 import 'package:broker/feature/chat/data/repo/websocket_chat.dart';
 import 'package:broker/feature/home/data/repo/home_repo.dart';
@@ -44,5 +45,7 @@ getIt.registerLazySingleton<WebSocketService>(() => WebSocketService());
 ),
 );
  getIt.registerLazySingleton<FavCubit>(() => FavCubit());
+ 
 
+ getIt.registerLazySingleton<BookingCubit>(() => BookingCubit(getIt()));
 }

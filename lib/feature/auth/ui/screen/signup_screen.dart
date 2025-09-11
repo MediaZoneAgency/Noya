@@ -44,133 +44,167 @@ class _SignUpScreenState extends State<SignUpScreen> {
     super.dispose();
   }
   final formKey = GlobalKey<FormState>();
-  @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthCubit,AuthState>(
 
-      builder: (BuildContext context, AuthState state) {
-        return Scaffold(
-        body: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                verticalSpace(45),
-                Center(
-                  child: Text(
-                    S.of(context).SignUp,
-                    style: TextStyles.latoBold28DarkBlack,
-                  ),
-                ),
-                verticalSpace(40),
-                Form(
-                  key: formKey,
+  @override
+Widget build(BuildContext context) {
+  return BlocBuilder<AuthCubit, AuthState>(
+    builder: (BuildContext context, AuthState state) {
+      return Scaffold(     backgroundColor: Colors.transparent,
+    body: SafeArea(
+      child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // 🌄 Background Image
+              Positioned.fill(
+                child: Image.asset(
+            'assets/img/image 2.png',
+            fit: BoxFit.cover,
+          ),
+              ),
+
+              // 🧾 Main Content
+              SingleChildScrollView(
+                child: Padding(
+                  padding:
+                      EdgeInsets.symmetric(horizontal: 15.w, vertical: 15.h),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      EnterYour(text: S.of(context).EnterName),
-                      verticalSpace(7),
-                      AppTextFormField(hintText: "Your Name",controller: _nameController,),
-                      verticalSpace(18),
-                      EnterYour(text: S.of(context).EnterPhone),
-                      verticalSpace(7),
-                   PhoneTextForm(controller: _phoneController,onChanged: AuthCubit.get(context).changeSignUpPhone ),
-                      verticalSpace(5),
-                      EnterYour(text: S.of(context).EnterEmail),
-                      verticalSpace(7),
-                      AppTextFormField(hintText: "Your Email",controller: _emailController,),
-                      verticalSpace(18),
-                      EnterYour(
-                        text: S.of(context).EnterPassword,
-                      ),
-                      verticalSpace(7),
-                      AppTextFormField(
-                        controller: _passwordController,
-                        hintText: S.of(context).Password,
-                        isObscureText:AuthCubit.get(context).isObscureText1,
-                        suffixIcon: GestureDetector(
-                          onTap: () {
-                            AuthCubit.get(context).obscureText2();
-                          },
-                          child: Icon(
-                            AuthCubit.get(context).isObscureText1
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
+                      verticalSpace(45),
+                      Center(
+                        child: Text(
+                          S.of(context).SignUp,
+                          style: TextStyles.latoBold28DarkBlack,
                         ),
                       ),
-                      verticalSpace(18),
-                      EnterYour(
-                        text: S.of(context).ConfirmPassword,
-                      ),
-                      verticalSpace(7),
-                      AppTextFormField(
-                        controller: _PasswordConfirmController,
-                        hintText: S.of(context).Password,
-                        isObscureText:AuthCubit.get(context).isObscureText2,
-                        suffixIcon: GestureDetector(
-                          onTap: () {
-                            AuthCubit.get(context).obscureText2();
-                          },
-                          child: Icon(
-                            AuthCubit.get(context).isObscureText2
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                          ),
+                      verticalSpace(40),
+                      Form(
+                        key: formKey,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            EnterYour(text: S.of(context).EnterName),
+                            verticalSpace(7),
+                            AppTextFormField(
+                              hintText: "Your Name",
+                              controller: _nameController,
+                            ),
+                            verticalSpace(18),
+                            EnterYour(text: S.of(context).EnterPhone),
+                            verticalSpace(7),
+                            PhoneTextForm(
+                              controller: _phoneController,
+                              onChanged:
+                                  AuthCubit.get(context).changeSignUpPhone,
+                            ),
+                        
+                            EnterYour(text: S.of(context).EnterEmail),
+                            verticalSpace(7),
+                            AppTextFormField(
+                              hintText: "Your Email",
+                              controller: _emailController,
+                            ),
+                            verticalSpace(18),
+                            EnterYour(
+                              text: S.of(context).EnterPassword,
+                            ),
+                            verticalSpace(7),
+                            AppTextFormField(
+                              controller: _passwordController,
+                              hintText: S.of(context).Password,
+                              isObscureText:
+                                  AuthCubit.get(context).isObscureText1,
+                              suffixIcon: GestureDetector(
+                                onTap: () {
+                                  AuthCubit.get(context).obscureText1();
+                                },
+                                child: Icon(
+                                  AuthCubit.get(context).isObscureText1
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                              ),
+                            ),
+                            verticalSpace(18),
+                            EnterYour(
+                              text: S.of(context).ConfirmPassword,
+                            ),
+                            verticalSpace(7),
+                            AppTextFormField(
+                              controller: _PasswordConfirmController,
+                              hintText: S.of(context).Password,
+                              isObscureText:
+                                  AuthCubit.get(context).isObscureText2,
+                              suffixIcon: GestureDetector(
+                                onTap: () {
+                                  AuthCubit.get(context).obscureText2();
+                                },
+                                child: Icon(
+                                  AuthCubit.get(context).isObscureText2
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
+                                ),
+                              ),
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return S
+                                      .of(context)
+                                      .passwordcannotbeempty;
+                                } else if (_passwordController.text !=
+                                    _PasswordConfirmController.text) {
+                                  return S
+                                      .of(context)
+                                      .Passwordsdontmatch;
+                                }
+                                return null;
+                              },
+                            ),
+                            verticalSpace(20),
+                            AppTextButton(
+                              buttonText: S.of(context).SignUp,
+                              textStyle: TextStyles.latoMedium17White,
+                              onPressed: () async {
+                                if (formKey.currentState!.validate()) {
+                                  await AuthCubit.get(context).signUp(
+                                    RegisterModel(
+                                      name: _nameController.text,
+                                      email: _emailController.text,
+                                      password: _passwordController.text,
+                                      passwordConfirmation:
+                                          _PasswordConfirmController.text,
+                                      phone_number:
+                                          AuthCubit.get(context).signUpPhone,
+                                    ),
+                                  );
+                                }
+                              },
+                            ),
+                               verticalSpace(18),
+                            HaveAccountText(
+                              text: "or  ",
+                              buttonText: S.of(context).Login,
+                              onTap: () {
+                                Navigator.pushNamed(
+                                    context, Routes.loginScreen);
+                              },
+                            ),
+                            verticalSpace(25),
+                          ],
                         ),
-                        validator: (value) {
-                          if (value == null || value.isEmpty) {
-                            return S.of(context).passwordcannotbeempty;
-                          } else if (_passwordController.text !=
-                              _PasswordConfirmController.text) {
-                            return S.of(context).Passwordsdontmatch;
-                          }
-                          return null;
-                        },
                       ),
-
-                      verticalSpace(20),
-                      AppTextButton(
-                        buttonText: S.of(context).SignUp,
-                        textStyle: TextStyles.latoMedium17White,
-                        onPressed: ()  async {
-                  if (formKey.currentState!.validate()) {
-                     await AuthCubit.get(context).signUp(
-                         RegisterModel(
-                          name: _nameController.text,
-                          email: _emailController.text,
-                         password: _passwordController.text,
-                          passwordConfirmation: _PasswordConfirmController.text,
-                           phone_number:  AuthCubit.get(context).signUpPhone,
-                        ),
-                      );
-                   }
-                },
-                      ),
-                      HaveAccountText(
-                        text: "or",
-                        buttonText: S.of(context).Login,
-                        onTap: () {
-                          Navigator.pushNamed(context, Routes.loginScreen);
-                        },
-                      ),
-                      verticalSpace(25),
-
-
+                      SignUpStateUi(),
                     ],
                   ),
                 ),
-                SignUpStateUi(),
-              ],
-
-            ),
+              ),
+            ],
           ),
         ),
-
       );
-      },
-    );
+    },
+  );
+}
 
-  }
+
+
 }

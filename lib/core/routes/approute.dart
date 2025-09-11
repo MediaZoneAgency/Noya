@@ -113,28 +113,28 @@ class AppRouter {
     //           ),
     //     );
     //
-    //   case Routes.wishListScreen:
-    //     return MaterialPageRoute(
-    //
-    //       builder: (_) =>MultiBlocProvider(
-    //           providers: [
-    //
-    //             BlocProvider<ProfileCubit>.value(
-    //               value: getIt<ProfileCubit>(),
-    //             ),
-    //             BlocProvider<FavCubit>.value(
-    //               value: getIt<FavCubit>(),
-    //             ),
-    //           ], child: const WishListScreen()),
-    //     );
-    //   case Routes.accountInfoScreen:
-    //     return MaterialPageRoute(
-    //       builder: (_) =>
-    //          BlocProvider.value(
-    //             value: getIt<ProfileCubit>(),
-    //             child: AccountInfoScreen(),
-    //           ),
-    //     );
+      // case Routes.wishListScreen:
+      //   return MaterialPageRoute(
+    
+      //     builder: (_) =>MultiBlocProvider(
+      //         providers: [
+    
+      //           BlocProvider<ProfileCubit>.value(
+      //             value: getIt<ProfileCubit>(),
+      //           ),
+                // BlocProvider<FavCubit>.value(
+                //   value: getIt<FavCubit>(),
+                // ),
+      //         ], child: const WishListScreen()),
+      //   );
+      // case Routes.accountInfoScreen:
+      //   return MaterialPageRoute(
+      //     builder: (_) =>
+      //        BlocProvider.value(
+      //           value: getIt<ProfileCubit>(),
+      //           child: AccountInfoScreen(),
+      //         ),
+      //   );
     //   case Routes.coursesGridViewScreen:
     //     return MaterialPageRoute(
     //       builder: (_) =>MultiBlocProvider(providers: [

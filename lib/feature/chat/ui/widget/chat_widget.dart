@@ -1,15 +1,24 @@
+// lib/feature/chat/ui/widgets/chat_widget.dart
+
 import 'dart:async';
-import 'package:broker/core/sharedWidgets/top_rated_item.dart';
 import 'package:broker/core/sharedWidgets/unit_widget.dart';
+import 'package:broker/core/theming/colors.dart';
+import 'package:broker/core/theming/styles.dart';
+import 'package:broker/feature/calendar/ui/CalendarScreen.dart';
 import 'package:broker/feature/home/data/models/unit_model.dart';
-import 'package:broker/feature/map/ui/map_screen.dart';
+import 'package:broker/feature/like/logic/fav_cubit.dart';
+import 'package:broker/feature/profie/logic/profile_cubit.dart';
 import 'package:flutter/material.dart';
-// تأكد من مسار الويدجت
+import 'package:flutter_bloc/flutter_bloc.dart';
+
+import 'package:fluttertoast/fluttertoast.dart';
 
 class ChatWidget extends StatefulWidget {
   const ChatWidget({
     Key? key,
-    required this.msg,
+    required this.msg, 
+    this.messageId,
+    // msg سيكون الآن هو الرد الكامل من الموديل
     required this.chatIndex,
     this.onFeedback,
     required this.isCurrentlyReceiving,
@@ -17,7 +26,10 @@ class ChatWidget extends StatefulWidget {
 
   final String msg;
   final int chatIndex;
-  final Function(String feedbackType, String? comment)? onFeedback;
+  final  String? messageId;
+  // ✅ تم تحديث توقيع الدالة لتشمل messageId
+  final Function(String messageId, String feedbackType, String? comment)?
+      onFeedback;
   final bool isCurrentlyReceiving;
 
   @override
@@ -25,416 +37,376 @@ class ChatWidget extends StatefulWidget {
 }
 
 class _ChatWidgetState extends State<ChatWidget> {
+  // --- متغيرات الحالة (State) ---
   String _displayedText = "";
-  String _fullTargetText = "";
+  String _fullIntroText = "";
+  String? _messageId;
+
   Timer? _typingTimer;
-  String? _standaloneLocationLink;
   int _currentCharIndex = 0;
-  final Duration _typingSpeed = const Duration(milliseconds: 30);
-  List<UnitExtractionResult> _extractedUnits = [];
+  final Duration _typingSpeed = const Duration(milliseconds: 25);
+
+  List<UnitModel> _extractedUnits = [];
+  bool _shouldShowCalendar = false;
+  late PageController _pageController;
 
   @override
   void initState() {
     super.initState();
-    _fullTargetText = widget.msg;
-    _checkForUnits();
-    if (widget.chatIndex == 1 && widget.isCurrentlyReceiving) {
-      _startTypingAnimation();
-    } else {
-      _displayedText = _fullTargetText;
+    _pageController =
+        PageController(viewportFraction: 0.88); // لترك مساحة بين الوحدات
+    _initializeMessage();
+  }
+
+  // هذه الدالة تعمل عند تحديث الـ Widget (عند وصول رد جديد)
+  @override
+  void didUpdateWidget(covariant ChatWidget oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.msg != oldWidget.msg) {
+      _initializeMessage();
     }
   }
 
-  void _checkForUnits() {
-    if (widget.chatIndex == 1) {
-      final parsed = extractUnitsWithIntro(widget.msg);
-      _extractedUnits = [parsed]; // ✅ لف الكائن في ليست
+  void _initializeMessage() {
+    _typingTimer?.cancel(); // أوقف أي أنيميشن قديم
+
+    // إذا كانت رسالة مستخدم، اعرضها مباشرة
+    if (widget.chatIndex == 0) {
+      setState(() {
+        _fullIntroText = widget.msg;
+        _displayedText = widget.msg;
+        _extractedUnits = [];
+        _messageId = null;
+      });
+      return;
     }
+
+    // إذا كانت رسالة بوت، قم بتحليلها
+    final parsedResult = extractUnitsWithIntro(widget.msg);
+    print("11111");
+    print(widget.msg);
+    print(parsedResult);
+    final appointmentRegex = RegExp(
+        r'(تاريخ|معاد|حجز موعد|موعد|وقت|لمعاينة|تحديد ميعاد)',
+        caseSensitive: false);
+         final appointmentRequestRegex = RegExp(r'(تاريخ|معاد|حجز موعد|وقت|لمعاينة|تحديد ميعاد)', caseSensitive: false);
+  final appointmentConfirmationRegex = RegExp(r'(تم حجز موعد|حجزك تأكد)', caseSensitive: false);
+
+    setState(() {
+      _fullIntroText = parsedResult.introText ?? "";
+      _extractedUnits = parsedResult.units;
+      _messageId = parsedResult.messageId; // حفظ الـ ID للتقييم
+      _shouldShowCalendar = 
+        appointmentRequestRegex.hasMatch(_fullIntroText) && 
+        !appointmentConfirmationRegex.hasMatch(_fullIntroText) && 
+        _extractedUnits.isEmpty;
+    });
+
+    _startTypingAnimation();
   }
-
-  UnitExtractionResult extractUnitsWithIntro(String text) {
-    final List<UnitModel> units = [];
-    String? intro;
-
-    final hasDelimitedUnits = text.contains('[[[UNIT_START]]]');
-
-    final unitBlocks = hasDelimitedUnits
-        ? RegExp(r'\[\[\[UNIT_START\]\]\](.*?)\[\[\[UNIT_END\]\]\]',
-                dotAll: true)
-            .allMatches(text)
-            .map((e) => e.group(1)!)
-            .toList()
-        : [text]; // 🆕 لو مفيش delimiters، اعتبر النص كله وحدة
-
-    // المقدمة في حالة عدم وجود [[[UNIT_START]]]
-    if (!hasDelimitedUnits) {
-      final match =
-          RegExp(r'^(.+?)\n[-•]\s+\*\*', dotAll: true).firstMatch(text);
-      intro = match?.group(1)?.trim();
-    } else {
-      final introMatch = RegExp(r'^(.*?)\[\[\[UNIT_START\]\]\]', dotAll: true)
-          .firstMatch(text);
-      intro = introMatch?.group(1)?.trim();
-    }
-
-    if (intro?.isEmpty ?? true) intro = null;
-
-    for (final block in unitBlocks) {
-      print('🔍 block:\n$block');
-
-      final title = RegExp(r'في\s+[\"“”]?(.+?)(?=[\"”])')
-          .firstMatch(block)
-          ?.group(1)
-          ?.trim();
-
-      final location = RegExp(
-              r'(?:(?:الموقع|Location)[:：]?\**\**)?(?:\s*[:-])?\s*(الشيخ زايد|القاهرة الجديدة|[^\n،.]+)')
-          .firstMatch(block)
-          ?.group(1)
-          ?.trim();
-
-      final sizeText = RegExp(
-              r'(?:(?:المساحة|Size|المساحة الواسعة)[:：]?\**\**)?(?:\s*[:-])?\s*([\d,\.]+)\s*(?:متر)?')
-          .firstMatch(block)
-          ?.group(1)
-          ?.replaceAll(',', '')
-          ?.trim();
-      final locationLink = RegExp(r'\[رابط الموقع\]\((https?:\/\/[^\s)]+)\)')
-          .firstMatch(block)
-          ?.group(1);
-
-// final priceText = RegExp(
-//   r'(?:\*\*?)?\s*(?:💰)?\s*(?:السعر|Price)\s*(?:[:：])?\s*\*{0,2}?\s*([\d,.]+)',
-//   caseSensitive: false,
-// ).firstMatch(block)?.group(1)?.replaceAll(',', '')?.trim();
-
-      final priceText =
-          RegExp(r'(?:السعر|Price)[\s:：\-\*]*([\d,\.]+)', caseSensitive: false)
-              .firstMatch(block)
-              ?.group(1)
-              ?.replaceAll(',', '')
-              ?.trim();
-
-      print("🎯 Extracted price text: $priceText");
-
-      final price = priceText != null ? '$priceText جنيه' : null;
-      print("📦 Final Unit price: $price");
-      final rooms = int.tryParse(
-        RegExp(r'(?:عدد الغرف|غرف النوم|Bedrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
-                .firstMatch(block)
-                ?.group(1) ??
-            '',
-      );
-
-      final baths = int.tryParse(
-        RegExp(r'(?:عدد الحمامات|الحمامات|Bathrooms)[:：]?\**\**?\s*[:-]?\s*(\d+)')
-                .firstMatch(block)
-                ?.group(1) ??
-            '',
-      );
-final locationLink2 = RegExp(r'\[(?:رابط الموقع|شوف الموقع)\]\((https?:\/\/[^\s)]+)\)')
-    .firstMatch(block)
-    ?.group(1);
-
-      final description = RegExp(
-        r'(?:الوصف|التفاصيل|تقسيط|نظام الدفع|خطة الدفع|المميزات|Description|Features)[:：]?\**\**?\s*[:-]?\s*(.+)',
-        caseSensitive: false,
-      ).firstMatch(block)?.group(1)?.trim();
-
-      final imageUrl = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+)\)')
-          .firstMatch(block)
-          ?.group(1);
-
-      int? totalSize = sizeText != null ? int.tryParse(sizeText) : null;
-      print(totalSize);
-
-      if (imageUrl == null) continue;
-
-      units.add(UnitModel(
-        type: location ?? "غير محدد",
-        location: locationLink2 ,
-        price: (price != null && price.isNotEmpty) ? '$price ' : "غير متوفر",
-        size: totalSize,
-        rooms: rooms,
-        bathrooms: baths,
-        description: description,
-        images: [imageUrl],
-      ));
-    }
-
-    return UnitExtractionResult(
-      introText: intro,
-      units: units,
-    );
-  }
-
-//   UnitExtractionResult extractUnitsWithIntro(String text) {
-//     final List<UnitModel> units = [];
-//     String? intro;
-// print("🔍 block:\n$text");
-
-//     final hasDelimitedUnits = text.contains('[[[UNIT_START]]]');
-
-//     final unitBlocks = hasDelimitedUnits
-//         ? RegExp(r'\[\[\[UNIT_START\]\]\](.*?)\[\[\[UNIT_END\]\]\]',
-//                 dotAll: true)
-//             .allMatches(text)
-//             .map((e) => e.group(1)!)
-//             .toList()
-//         : [];
-
-//     intro = RegExp(r'^(.*?)\[\[\[UNIT_START\]\]\]', dotAll: true)
-//         .firstMatch(text)
-//         ?.group(1)
-//         ?.trim();
-//     if (intro?.isEmpty ?? true) intro = null;
-
-//     for (final block in unitBlocks) {
-//       final title = RegExp(r'###\s*(.*)').firstMatch(block)?.group(1)?.trim();
-// final priceMatch = RegExp(r'\*\*السعر:\*\*\s*([\d,\.]+)').firstMatch(block);
-// final price = priceMatch?.group(1)?.replaceAll(',', '').trim();
-
-// print("💰 Extracted price: $price");
-
-//       final location =
-//           RegExp(r'الموقع[:：]?\s*(.*)').firstMatch(block)?.group(1)?.trim();
-
-//       final sizeText =
-//           RegExp(r'المساحة[:：]?\s*([^\n]*)').firstMatch(block)?.group(1);
-//       final parts = RegExp(r'([\d.]+)');
-//       int? totalSize;
-//       if (sizeText != null) {
-//         final parts = RegExp(r'([\d.]+)')
-//             .allMatches(sizeText)
-//             .map((m) => double.tryParse(m.group(1)!))
-//             .whereType<double>()
-//             .toList();
-
-//         if (parts.isNotEmpty) {
-//           totalSize = parts.fold(0.0, (sum, part) => sum + part).toInt();
-//         }
-//       }
-
-//       final rooms = int.tryParse(
-//           RegExp(r'الغرف[:：]?\s*(\d+)').firstMatch(block)?.group(1) ?? '');
-//       final baths = int.tryParse(
-//           RegExp(r'الحمامات[:：]?\s*(\d+)').firstMatch(block)?.group(1) ?? '');
-
-//       final description = RegExp(r'التفاصيل[:：]?\s*(.+)', dotAll: true)
-//           .firstMatch(block)
-//           ?.group(1)
-//           ?.trim();
-
-//       final imageUrl = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+)\)')
-//           .firstMatch(block)
-//           ?.group(1);
-
-//       if (imageUrl == null) continue;
-
-//       units.add(UnitModel(
-//         type: title ?? "وحدة سكنية",
-//       price: (price != null && price.isNotEmpty) ? '$price جنيه' : "غير متوفر",
-
-//         size: totalSize,
-//         location: location ?? "غير محدد",
-//         rooms: rooms,
-//         bathrooms: baths,
-//         description: description,
-//         images: [imageUrl],
-//       ));
-//     }
-
-//     return UnitExtractionResult(
-//       introText: intro,
-//       units: units,
-//     );
-//   }
-
-//   List<UnitModel> _extractUnitsFromText(String text) {
-//     final unitBlocks = RegExp(r'(\d+\.\s+\*\*(.*?)\*\*.*?)(?=(\n\d+\.|\Z))', dotAll: true)
-//         .allMatches(text)
-//         .map((e) => e.group(1)!)
-//         .toList();
-
-//     return unitBlocks.map((block) {
-//       final titleMatch = RegExp(r'\*\*(.*?)\*\*').firstMatch(block);
-//       final sizeMatch = RegExp(r'المساحة:\s*(\d+)').firstMatch(block);
-//       final priceMatch = RegExp(r'السعر:\s*([\d,\.\s]+)').firstMatch(block);
-//       final descMatch = RegExp(r'مقدم.*?(?=(\n|\r|\Z))').firstMatch(block);
-//       final linkMatch = RegExp(r'\[رابط\]\((.*?)\)').firstMatch(block);
-//     final imageMatch = RegExp(r'!\[.*?\]\((https?:\/\/[^\s)]+?\.(?:jpg|jpeg|png))\)').firstMatch(block) ??
-//     RegExp(r'\b(https?:\/\/[^\s)]+?\.(?:jpg|jpeg|png))\b').firstMatch(block);
-
-// final imageUrl = imageMatch?.group(1);
-
-//       final priceRaw = priceMatch?.group(1)?.replaceAll(RegExp(r'[^\d.]'), '');
-//   final locationMatch = RegExp(
-//       r'(الشيخ زايد|القاهرة الجديدة|العين السخنة|6 أكتوبر|التجمع الثالث|التجمع الخامس|العاصمة الإدارية)',
-//       caseSensitive: false,
-//     ).firstMatch(block);
-//     final location = locationMatch?.group(0)?.trim();
-//       return UnitModel(
-//         type: titleMatch?.group(1)?.trim(),
-//         size: int.tryParse(sizeMatch?.group(1) ?? ''),
-//         price: priceRaw != null ? '${priceRaw.trim()} جنيه' : null,
-//         description: descMatch?.group(0)?.trim(),
-//         location_link: linkMatch?.group(1),
-//      images: (imageUrl != null && imageUrl.isNotEmpty) ? [imageUrl] : [],
-
-//             location: location ?? "غير محدد",
-//       );
-//     }).toList();
-//   }
-
   void _startTypingAnimation() {
-    _typingTimer?.cancel();
     _currentCharIndex = 0;
-    _displayedText = "";
-    if (mounted) {
-      setState(() {});
-    }
+    setState(() => _displayedText = "");
+    
+    // النص الذي سيتم عمل أنيميشن له هو النص التمهيدي فقط
+    final textToAnimate = _fullIntroText;
 
-    if (_fullTargetText.isEmpty) return;
+    if (textToAnimate.isEmpty || !widget.isCurrentlyReceiving) {
+      setState(() => _displayedText = textToAnimate);
+      return;
+    }
 
     _typingTimer = Timer.periodic(_typingSpeed, (timer) {
       if (!mounted) {
         timer.cancel();
         return;
       }
-
-      if (_currentCharIndex < _fullTargetText.length) {
+      if (_currentCharIndex < textToAnimate.length) {
         _currentCharIndex++;
-        setState(() {
-          _displayedText = _fullTargetText.substring(0, _currentCharIndex);
-        });
+        setState(() => _displayedText = textToAnimate.substring(0, _currentCharIndex));
       } else {
         timer.cancel();
         _typingTimer = null;
-        setState(() {});
       }
     });
-  }
-
-  @override
+  } @override
   void dispose() {
     _typingTimer?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
+  // =========================================================================
+  // ✅ دالة تحليل النص الجديدة والأكثر قوة
+  // في ملف: lib/feature/chat/ui/widgets/chat_widget.dart
+
+// VVV استبدل هذه الدالة بالكامل VVV
+  UnitExtractionResult extractUnitsWithIntro(String text) {
+    print("--- Parsing New Bot Message ---");
+    final List<UnitModel> units = [];
+    String? intro;
+    // الـ messageId يتم استخراجه الآن في الـ Cubit، لذا لا حاجة له هنا
+    // لكننا سنتركه في الكلاس المساعد للتوافقية
+
+    try {
+      // الخطوة 1: فصل النص التمهيدي عن كتل الوحدات
+      final introMatch = RegExp(r'^(.*?)(\[\[\[UNIT_START\]\]\])', dotAll: true)
+          .firstMatch(text);
+      if (introMatch != null) {
+        intro = introMatch.group(1)?.trim();
+      } else {
+        intro = text;
+      }
+      if (intro?.isEmpty ?? true) intro = null;
+
+      // الخطوة 2: استخراج كتل الوحدات
+      final unitBlocks = RegExp(
+              r'\[\[\[UNIT_START\]\]\](.*?)\[\[\[UNIT_END\]\]\]',
+              dotAll: true)
+          .allMatches(text)
+          .map((e) => e.group(1)!)
+          .toList();
+
+      print("Found ${unitBlocks.length} unit blocks.");
+
+      // الخطوة 3: تحليل كل كتلة
+      for (final block in unitBlocks) {
+        // دالة مساعدة مرنة تتجاهل الرموز والنصوص الزائدة
+        String? extractValue(String pattern) {
+          return RegExp(pattern, caseSensitive: false, multiLine: true)
+              .firstMatch(block)
+              ?.group(1)
+              ?.trim();
+        }
+
+        // VVV هذه هي التعبيرات النمطية (RegEx) الجديدة والمحسّنة VVV
+        final unitIdText =
+            extractValue(r'\[\[رقم الوحدة\]\]:\s*\[\[\[(\d+)\]\]\]');
+        final projectName = extractValue(r'اسم المشروع:\s*"(.*?)"');
+        // يتجاهل الرموز والمسافات ويأخذ الرقم والعملة
+        final priceText = extractValue(r'السعر:.*?([\d,.\s]+(?:جنيه|مصري)+)');
+        final sizeText = extractValue(r'المساحة:.*?([\d,.]+)\s*متر');
+        final roomsText = extractValue(r'الغرف:.*?(\d+)');
+        final location = extractValue(r'الموقع:\s*(.+)');
+        // يتجاهل أي شيء بين "الصور:" والقوس المربع "["
+        final imageUrl = extractValue(r'الصور:.*?\((https?:\/\/[^\s)]+)\)');
+        final locationLink =
+            extractValue(r'رابط الموقع:.*?\((https?:\/\/[^\s)]+)\)');
+
+        final unitId = unitIdText != null ? int.tryParse(unitIdText) : null;
+
+        // شرط أساسي: إذا لم يتم العثور على صورة، تجاهل الوحدة
+        if (imageUrl == null) {
+          print("DEBUG: Image URL not found in block. Skipping unit.");
+          print("--- Block Content ---\n$block\n--------------------");
+          continue;
+        }
+
+        units.add(UnitModel(
+          id: unitId,
+          type: projectName, // استخدام اسم المشروع كنوع
+          location: location ?? "غير محدد",
+          locationLink: locationLink,
+          price: priceText,
+          size: sizeText != null
+              ? int.tryParse(sizeText.replaceAll(',', ''))
+              : null,
+          rooms: roomsText != null ? int.tryParse(roomsText) : null,
+          bathrooms: null,
+          description: null,
+          images: [imageUrl],
+        ));
+      }
+    } catch (e) {
+      print("Error during message parsing: $e");
+      return UnitExtractionResult(introText: text, units: [], messageId: null);
+    }
+
+    return UnitExtractionResult(
+        introText: intro, units: units, messageId:widget.messageId);
+  }
+
   @override
-  Widget build(BuildContext context) {
+  // Widget build(BuildContext context) {
+  //   final isBot = widget.chatIndex == 1;
+  //   final isAnimationDone = _typingTimer == null;
+
+  //   if (isBot && _shouldShowCalendar) {
+  //     return const Padding(
+  //       padding: EdgeInsets.symmetric(vertical: 12.0),
+  //       child: CalendarScreen(),
+  //     );
+  //   }
+
+  //   Widget mainContent;
+  //   if (isBot && _extractedUnits.isNotEmpty) {
+  //     mainContent = _buildUnitsCarousel(isAnimationDone);
+  //   } else {
+  //     mainContent = _buildSimpleTextMessage();
+  //   }
+
+  //   return Padding(
+  //     padding: const EdgeInsets.symmetric(vertical: 8.0),
+  //     child: Column(
+  //       crossAxisAlignment:
+  //           isBot ? CrossAxisAlignment.start : CrossAxisAlignment.end,
+  //       children: [
+  //         mainContent,
+  //         if (isBot && isAnimationDone) _buildFeedbackButtons(),
+  //       ],
+  //     ),
+  //   );
+  // }
+   Widget build(BuildContext context) {
     final isBot = widget.chatIndex == 1;
 
-    final hasIntroOrUnits = _extractedUnits.isNotEmpty &&
-        (_extractedUnits.first.introText != null ||
-            _extractedUnits.first.units.isNotEmpty);
-    if (hasIntroOrUnits) {
-      final introText = _extractedUnits.first.introText;
-      final units = _extractedUnits.first.units;
-
-      return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (introText != null)
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: Colors.transparent,
-                  borderRadius: const BorderRadius.only(
-                    topLeft: Radius.circular(16),
-                    topRight: Radius.circular(16),
-                    bottomLeft: Radius.circular(0),
-                    bottomRight: Radius.circular(16),
-                  ),
-                ),
-                child: Text(
-                  introText,
-                  style: const TextStyle(color: Colors.white, fontSize: 16),
-                ),
-              ),
-
-            // ✅ اعرض الوحدات فقط
-            ...units.map((unit) => Padding(
-                  key: ValueKey(unit),
-                  padding: const EdgeInsets.only(bottom: 12.0),
-                  child: UnitItem(unit),
-                )),
-          ],
-        ),
+    // ==========================================================
+    // VVV              هذا هو التعديل الأساسي               VVV
+    // ==========================================================
+    
+    // إذا كانت رسالة بوت وتحتوي على وحدات، اعرض الكاروسيل
+    if (isBot && _extractedUnits.isNotEmpty) {
+      return _buildUnitsCarousel();
+    }
+    
+    // إذا كانت رسالة بوت وتتطلب التقويم
+    if (isBot && _shouldShowCalendar) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 12.0),
+        child: CalendarScreen(),
       );
     }
+    
+    // في جميع الحالات الأخرى، اعرض رسالة نصية بسيطة
+    return _buildSimpleTextMessage();
+  }
 
-// ✅ لو locationLink موجود ومفيش وحدات -> اعرضه لوحده
-    if (_extractedUnits.isEmpty && _standaloneLocationLink != null) {
-      return ChatLocationPreviewMap(locationLink: _standaloneLocationLink!);
-    }
 
-    // 👇 fallback لو مفيش وحدات ولا نص تمهيدي
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 12.0),
-      child: Row(
-        mainAxisAlignment:
-            isBot ? MainAxisAlignment.start : MainAxisAlignment.end,
-        children: [
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(16),
-                  topRight: const Radius.circular(16),
-                  bottomLeft: Radius.circular(isBot ? 0 : 16),
-                  bottomRight: Radius.circular(isBot ? 16 : 0),
-                ),
-              ),
-              child: Text(
-                _displayedText,
-                style: const TextStyle(color: Colors.white, fontSize: 16),
-              ),
+  Widget _buildSimpleTextMessage() {
+    final bool isBot = widget.chatIndex == 1;
+    return Align(
+      alignment:
+          widget.chatIndex == 1 ? Alignment.centerLeft : Alignment.centerRight,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.symmetric(horizontal: 12.0),
+        decoration: BoxDecoration(
+          color: widget.chatIndex == 1
+              ? Colors.transparent.withOpacity(0.1)
+              : Colors.transparent.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          _displayedText,
+          // استخدم الأنماط المعرفة مسبقاً من كلاس TextStyles
+          style: isBot
+              ? TextStyles.chatBotMessageStyleCustom // أو .chatBotMessageStyle
+              : TextStyles.chatUserMessageStyle,
+        ),
+      ),
+    );
+  }  Widget _buildUnitsCarousel() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_fullIntroText.isNotEmpty)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(12.0, 4.0, 12.0, 16.0),
+            child: Text(
+              _displayedText, // هذا سيعرض النص التمهيدي مع الأنيميشن
+              style: TextStyles.chatBotMessageStyleCustom,
             ),
           ),
+        
+        // الكاروسيل سيظهر مباشرةً
+        SizedBox(
+          height: 420,
+          child: BlocBuilder<FavCubit, FavState>(
+            builder: (context, state) {
+              final favCubit = context.read<FavCubit>();
+              final profileCubit = context.read<ProfileCubit>();
+              return PageView.builder(
+                controller: _pageController,
+                itemCount: _extractedUnits.length,
+                itemBuilder: (context, index) {
+                  final UnitModel unit = _extractedUnits[index];
+                  final bool isFavorite = favCubit.favorite.contains(unit.id);
+                  return Padding(
+                    key: ValueKey('${unit.id}_$index'),
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0),
+                    child: UnitItem(
+                      unit,
+                      isFavorite: isFavorite,
+                      onFavoriteTap: () {
+                     if (profileCubit.profileUser != null) {
+                        // ✅ الحل: استخدم 'unit' هنا أيضاً
+                        if (isFavorite) {
+                          favCubit.removeFromWishList(unit);
+                        } else {
+                          favCubit.addToWishList(model: unit);
+                        }
+                      } else {
+                        Fluttertoast.showToast(
+                          msg: "You Don't have an account",
+                          toastLength: Toast.LENGTH_SHORT,
+                          gravity: ToastGravity.BOTTOM,
+                          backgroundColor: ColorsManager.red,
+                          textColor: Colors.white,
+                          fontSize: 16.0,
+                        );
+                      }
+                      },
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ),
+        
+        // أزرار التقييم تظهر بعد انتهاء الأنيميشن
+        if (_typingTimer == null) _buildFeedbackButtons(),
+      ],
+    );
+  } Widget _buildFeedbackButtons() {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8.0, left: 16.0),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _feedbackButton(Icons.thumb_up_alt_outlined, 'like'),
+          const SizedBox(width: 12),
+          _feedbackButton(Icons.thumb_down_alt_outlined, 'dislike'),
         ],
       ),
     );
   }
-  // List<UnitModel> _extractUnitsFromText(String text) {
-  //   final unitBlocks =
-  //       RegExp(r'(\d+\.\s+\*\*(.*?)\*\*.*?)(?=(\n\d+\.|\Z))', dotAll: true)
-  //           .allMatches(text)
-  //           .map((e) => e.group(1)!)
-  //           .toList();
 
-  //   return unitBlocks.map((block) {
-  //     final titleMatch = RegExp(r'\*\*(.*?)\*\*').firstMatch(block);
-  //     final sizeMatch = RegExp(r'المساحة:\s*(\d+)').firstMatch(block);
-  //     final priceMatch = RegExp(r'السعر:\s*([\d,\.\s]+)').firstMatch(block);
-  //     final descMatch = RegExp(r'مقدم.*?(?=(\n|\r|\Z))').firstMatch(block);
-  //     final linkMatch = RegExp(r'\[رابط\]\((.*?)\)').firstMatch(block);
-  //     final imageMatch = RegExp(r'!\[.*?\]\((.*?)\)').firstMatch(block);
-
-  //     final priceRaw = priceMatch?.group(1)?.replaceAll(RegExp(r'[^\d.]'), '');
-
-  //     return UnitModel(
-  //       type: titleMatch?.group(1)?.trim(),
-  //       size: int.tryParse(sizeMatch?.group(1) ?? ''),
-  //       price: priceRaw != null ? '${priceRaw.trim()} جنيه' : null,
-  //       description: descMatch?.group(0)?.trim(),
-  //       location_link: linkMatch?.group(1),
-  //       images: imageMatch != null ? [imageMatch.group(1)!] : [],
-  //       location: "القاهرة الجديدة",
-  //     );
-  //   }).toList();
-  // }
+  Widget _feedbackButton(IconData icon, String feedbackType) {
+    return InkWell(
+      onTap: () {
+        if (widget.onFeedback != null && widget.messageId!= null) {
+          widget.onFeedback!(widget.messageId!, feedbackType, null);
+          Fluttertoast.showToast(msg: "Thanks for your feedback!");
+        } else if (widget.onFeedback != null) {
+          Fluttertoast.showToast(
+              msg: "Could not find message ID for feedback.");
+        }
+      },
+      borderRadius: BorderRadius.circular(20),
+      child: Padding(
+        padding: const EdgeInsets.all(4.0),
+        child: Icon(icon, color: Colors.white.withOpacity(0.6), size: 20),
+      ),
+    );
+  }
 }
 
+// كلاس مساعد لتنظيم البيانات المستخرجة
 class UnitExtractionResult {
   final String? introText;
   final List<UnitModel> units;
+  final String? messageId;
 
-  UnitExtractionResult({this.introText, required this.units});
+  UnitExtractionResult({this.introText, required this.units, this.messageId});
 }

@@ -88,27 +88,30 @@ class _LoginFormState extends State<LoginForm> {
               ),
             ),
           ),
-          verticalSpace(20),
+      
 
           // Login button with form validation and submission
-          AppTextButton(
-            buttonText: S.of(context).Login,
-            textStyle: TextStyles.latoMedium17White,
-            onPressed: () async {
-              // Check if the form is valid before proceeding
-              if (formKey.currentState!.validate()) {
-                // Perform login
-                await AuthCubit.get(context).login(
-                  LogInModel(
-                    email: emailEditingController.text,
-                    password: passwordEditingController.text,
-                    phoneNumber: AuthCubit.get(context).logInPhone,
-                  ),
-                );
-              }
-            },
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 40,vertical: 20),
+            child: AppTextButton(
+              buttonText: S.of(context).Login,
+              textStyle: TextStyles.latoMedium17White,
+              onPressed: () async {
+                // Check if the form is valid before proceeding
+                if (formKey.currentState!.validate()) {
+                  // Perform login
+                  await AuthCubit.get(context).login(
+                    LogInModel(
+                      email: emailEditingController.text,
+                      password: passwordEditingController.text,
+                      phoneNumber: AuthCubit.get(context).logInPhone,
+                    ),
+                  );
+                }
+              },
+            ),
           ),
-          verticalSpace(25),
+          verticalSpace(5),
 
           // Sign-up text at the bottom of the form
           HaveAccountText(

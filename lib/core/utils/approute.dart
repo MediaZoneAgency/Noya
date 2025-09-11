@@ -3,9 +3,13 @@ import 'package:broker/feature/auth/logic/auth_cubit.dart';
 import 'package:broker/feature/auth/ui/screen/forget_password.dart';
 
 import 'package:broker/feature/auth/ui/screen/signup_screen.dart';
+import 'package:broker/feature/booking/logic/cubit/booking_cubit.dart';
+import 'package:broker/feature/booking/ui/screen/booking_screen.dart';
 import 'package:broker/feature/chat/logic/chat_cubit.dart';
 import 'package:broker/feature/chat/ui/screen/voice_chat_screen.dart';
 import 'package:broker/feature/home/ui/screen/home_screen.dart';
+import 'package:broker/feature/like/logic/fav_cubit.dart';
+
 import 'package:broker/feature/nav_bar/logic/nav_bar_cubit.dart';
 import 'package:broker/feature/nav_bar/ui/navigation_bar.dart';
 import 'package:broker/feature/profie/logic/profile_cubit.dart';
@@ -19,6 +23,7 @@ import '../../feature/auth/ui/screen/reset_password.dart';
 import '../../feature/chat/ui/screen/ai_chat_screen.dart';
 import '../../feature/home/data/models/unit_model.dart';
 import '../../feature/home/logic/home_cubit.dart';
+import '../../feature/like/ui/screen/like_screen.dart';
 import '../../feature/search/logic/search_cubit.dart';
 import '../../feature/search/ui/screen/search_result_screen.dart';
 import '../../feature/splash/view/splashview.dart';
@@ -35,7 +40,21 @@ class AppRouter {
         return MaterialPageRoute(
           builder: (_) => const SplashView(),
         );
-
+   case Routes.wishListScreen:
+        return MaterialPageRoute(
+    
+          builder: (_) =>MultiBlocProvider(
+              providers: [
+    
+                BlocProvider<ProfileCubit>.value(
+                  value: getIt<ProfileCubit>(),
+                ),
+                BlocProvider<FavCubit>.value(
+                  value: getIt<FavCubit>(),
+                ),
+              ], 
+                   child: const LikeScreenWithDrawer())
+        );
       case Routes.signUpScreen:
         return MaterialPageRoute(
           builder: (_) =>
@@ -77,30 +96,41 @@ class AppRouter {
                 child: LoginScreen(),
               ),
         );
-      case Routes.AiChatScreen:
+         case Routes.AiChatScreen:
         return MaterialPageRoute(
-          builder: (_) =>MultiBlocProvider(
-              providers: [
-                BlocProvider<ChatCubit>.value(
-                  value: getIt<ChatCubit>(),
-              ),
-                 BlocProvider<ProfileCubit>.value(
-                  value: getIt<ProfileCubit>(),
-              )
-              
-              ],
-              
-                child:const AiChatScreen(),
-              ),
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider<HomeCubit>.value(value: getIt<HomeCubit>()),
+              BlocProvider<FavCubit>.value(value: getIt<FavCubit>()),
+              BlocProvider<ChatCubit>.value(value: getIt<ChatCubit>()),
+              BlocProvider<ProfileCubit>.value(value: getIt<ProfileCubit>()),
+            ],
+            // استخدم الـ Widget الجديد الذي يحتوي على ZoomDrawer
+            child: const AiChatRoot(),
+          ),
+        );
+      
+    case Routes.BookingScreen:
+        return MaterialPageRoute(
+          builder: (_) => MultiBlocProvider(
+            providers: [
+              BlocProvider<HomeCubit>.value(value: getIt<HomeCubit>()),
+              BlocProvider<FavCubit>.value(value: getIt<FavCubit>()),
+              BlocProvider<BookingCubit>.value(value: getIt<BookingCubit>()),
+              BlocProvider<ProfileCubit>.value(value: getIt<ProfileCubit>()),
+            ],
+            // استخدم الـ Widget الجديد الذي يحتوي على ZoomDrawer
+            child: const BookingsScreenWithDrawer(),
+          ),
         );
 //  case Routes.homeScreen:
 //         return MaterialPageRoute(
 
 //     builder: (_) =>MultiBlocProvider(
 //         providers: [
-//           BlocProvider<HomeCubit>.value(
-//             value: getIt<HomeCubit>(),
-//           ),
+          // BlocProvider<HomeCubit>.value(
+          //   value: getIt<HomeCubit>(),
+          // ),
 //           BlocProvider<ProductCubit>.value(
 //             value: getIt<ProductCubit>(),
 //           ),

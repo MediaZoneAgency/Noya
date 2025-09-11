@@ -18,7 +18,7 @@ static const String unitDetailsScreen = '/unitDetailsScreen';
   static const String addFieldScreen = '/addFieldScreen';
   static const String DetailsScreen = '/unitDetailsScreen';
 static const String cartScreen = '/CartScreen';
-static const String wishListScreen = '/wishListScreen';
+
 static const String accountInfoScreen = '/accountInfoScreen';
 static const String editAccountInfoScreen = '/editAccountInfoScreen';
 static const String settingsScreen = '/settingsScreen';

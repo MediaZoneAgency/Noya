@@ -33,13 +33,15 @@ class TextStyles {
     static TextStyle latoRegular14lightBlack = GoogleFonts.lato(
     fontSize: 14.sp,
     fontWeight: FontWeightHelper.regular,
-    color: ColorsManager.lightBlack,
+  //  color: ColorsManager.lightBlack,
+  color: Colors.white
   );
 
   static TextStyle latoBold28DarkBlack =GoogleFonts.lato(
     fontSize: 28.sp, // Responsive font size (assuming screen_util is used)
     fontWeight: FontWeightHelper.medium, // Custom font weight or directly use FontWeight.bold
-    color: ColorsManager.darkBlack, // Custom color
+   color: Colors.white
+   // color: ColorsManager.darkBlack, // Custom color
   );
 
   static TextStyle latoBold20DarkBlack = GoogleFonts.lato(
@@ -137,7 +139,8 @@ class TextStyles {
   static TextStyle  latoRegular15DarkGray=GoogleFonts.lato(
     fontSize: 15.sp, // Responsive font size (assuming screen_util is used)
     fontWeight: FontWeightHelper.regular, // Custom font weight or directly use FontWeight.bold
-    color: Color(0xff2A2A2A), // Custom color
+   // color: Color(0xff2A2A2A), // Custom color
+  color: Colors.white
   );
   static TextStyle  urbanistMedium14Light=GoogleFonts.urbanist(
     fontSize: 14.sp, // Responsive font size (assuming screen_util is used)
@@ -226,8 +229,8 @@ class TextStyles {
   static TextStyle latoMedium14DarkBlue = GoogleFonts.lato(
     fontSize: 14.sp,
     fontWeight: FontWeightHelper.medium,
-
-    color: ColorsManager.darkBlue,
+color: Colors.white
+    //color: ColorsManager.darkBlue,
   );
 
    static TextStyle latoMedium17White = GoogleFonts.lato(
@@ -236,6 +239,23 @@ class TextStyles {
      color: Colors.white,
 
    );
+  static TextStyle chatUserMessageStyle = TextStyle(
+    fontFamily: 'Madani',
+    fontSize: 23.sp,
+       fontWeight: FontWeight.normal, // Regular
+    color: Colors.white,
+    letterSpacing: -0.2,
+    height: 1.2, // 28 / 23
+  );
+  
+  static TextStyle chatBotMessageStyleCustom  =TextStyle(
+    fontFamily: 'Madani',
+    fontSize: 15.sp,
+    fontWeight: FontWeight.w500, // Medium
+    color: Colors.white,
+    letterSpacing: -0.36,
+    height: 1.6, // 24 / 15
+  );
 
 
 

@@ -1,4 +1,4 @@
-package com.example.broker
+package com.noyamz.noya
 
 import android.content.Intent
 import android.os.Build

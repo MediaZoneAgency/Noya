@@ -163,9 +163,9 @@
   "Notifications": "Notifications",
   "EditProfession": "Edit Profession",
   "GetHelp": "Get Help",
-  "Terms&Conditions": "Terms & Conditions",
-  "Privacy Policy": "Privacy Policy",
-  "About App": "About App",
+  "TermsConditions": "Terms & Conditions",
+  "PrivacyPolicy": "Privacy Policy",
+  "AboutApp": "About App",
   "Settings": "Settings",
   "Checknewcourses": "Check Our Courses",
   "Home": "Home",
@@ -175,10 +175,33 @@
   "Profile": "Profile",
   "Foryou": "For you",
   "Passwordsdontmatch": "Passwords don't match",
-  "HowCanIHeYou":"How Can I Help You"
+  "HowCanIHeYou":"How Can I Help You",
+  "favourite": "Favourite",
+  "helpFaq": "Help & FAQ",
+  "contactUs": "Contact Us",
+  "settings": "Settings",
+  "english": "English",
+  "arabic": "العربية",
+  "language": "Language",
+  "darkMode": "Dark Mode",
+  "lightMode": "Light Mode",
+  "notification": "Notification",
+  "dark": "Dark",
+  "HelpFAQ": "Help & FAQ",
+  "ContactUs": "Contact Us",
+  "Settings": "Settings",
+  "English": "English",
+  "Arabic": "العربية",
+  "Language": "Language",
+  "DarkMode": "Dark Mode",
+  "LightMode": "Light Mode",
+  "Notification": "Notification",
+  "Dark": "Dark",
+  "HelpFAQ": "Help & FAQ",
+  "ContactUs": "Contact Us",
 
-
-
+  "likes": "Likes",
+  "bookings": "Bookings"
 
 }
 

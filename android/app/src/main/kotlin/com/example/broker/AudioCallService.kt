@@ -1,4 +1,4 @@
-package com.example.broker
+package com.noyamz.noya
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -15,9 +15,13 @@ import android.os.Build
 import android.os.IBinder
 import android.util.Log
 import androidx.core.app.NotificationCompat
-import okio.ByteString.Companion.toByteString
-import okhttp3.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import okio.ByteString
+import okio.ByteString.Companion.toByteString
 import java.io.ByteArrayOutputStream
 import java.util.*
 import java.util.concurrent.TimeUnit
@@ -26,7 +30,8 @@ import kotlin.concurrent.thread
 class AudioCallService : Service() {
 
     private val TAG = "AudioCallService"
-    private val wsUrl = "wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/voice-chat?user_id=46" // Replace with your WebSocket URL
+    private val wsUrl =
+        "wss://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/ws/voice-chat?user_id=46" // Replace with your WebSocket URL
     private var webSocket: WebSocket? = null
 
     private var audioRecord: AudioRecord? = null
@@ -44,7 +49,7 @@ class AudioCallService : Service() {
     private val audioBuffer = ByteArrayOutputStream()
 
     private val client = OkHttpClient.Builder()
-        .readTimeout(0, TimeUnit.MILLISECONDS)  // No timeout for WebSocket
+        .readTimeout(0, TimeUnit.MILLISECONDS) // No timeout for WebSocket
         .build()
 
     private var periodicFlushTimer: Timer? = null
@@ -116,7 +121,11 @@ class AudioCallService : Service() {
                         }
                     }
 
-                    override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                    override fun onFailure(
+                        webSocket: WebSocket,
+                        t: Throwable,
+                        response: Response?
+                    ) {
                         Log.e(TAG, "WebSocket failure: ${t.message}", t)
                         stopSelf()
                     }
@@ -129,7 +138,8 @@ class AudioCallService : Service() {
                 })
 
                 // 2. Setup AudioRecord for mic capture
-                val minBufferSize = AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
+                val minBufferSize =
+                    AudioRecord.getMinBufferSize(sampleRate, channelConfig, audioFormat)
                 audioRecord = AudioRecord(
                     MediaRecorder.AudioSource.MIC,
                     sampleRate,
@@ -154,7 +164,6 @@ class AudioCallService : Service() {
                         }
                     }
                 }, 2000, 2000)
-
 
                 // 4. Read audio from mic, buffer and send periodically
                 while (isRecording) {

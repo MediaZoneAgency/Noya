@@ -52,23 +52,23 @@ class NavBarCubit extends Cubit<NavBarState> {
       value: getIt<SearchCubit>(),
       child: SearchScreen(),
     ),
-    BlocProvider<ChatCubit>.value(value: getIt<ChatCubit>(),child:AiChatScreen() ,),
-      MultiBlocProvider(
-          providers: [
-            BlocProvider<HomeCubit>.value(
-              value: getIt<HomeCubit>(),
-            ),
+  //  BlocProvider<ChatCubit>.value(value: getIt<ChatCubit>(),child:AiChatScreen() ,),
+      // MultiBlocProvider(
+      //     providers: [
+      //       BlocProvider<HomeCubit>.value(
+      //         value: getIt<HomeCubit>(),
+      //       ),
 
-            BlocProvider<ProfileCubit>.value(
-              value: getIt<ProfileCubit>(),
-            ),
+      //       BlocProvider<ProfileCubit>.value(
+      //         value: getIt<ProfileCubit>(),
+      //       ),
             
-            BlocProvider<FavCubit>.value(
-              value: getIt<FavCubit>(),
-            ),
-          ],
-          child: const LikeScreen(),
-        ),
+      //       BlocProvider<FavCubit>.value(
+      //         value: getIt<FavCubit>(),
+      //       ),
+      //     ],
+      //  //   child: const LikeScreen(),
+      //   ),
 
 
 

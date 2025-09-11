@@ -1,0 +1,3 @@
+-keep class com.google.android.exoplayer2.** { *; }
+-dontwarn com.google.android.exoplayer2.**
+-keep class com.ryanheise.just_audio.** { *; }

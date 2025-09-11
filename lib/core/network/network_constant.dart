@@ -1,4 +1,5 @@
 class NetworkConstant {
+
   static const baseUrl = "https://noyaai.com/";
   static const baseUrl1 =
       "https://real-estate-chatbot-4lmcjvi3xq-uc.a.run.app/";
@@ -13,4 +14,6 @@ class NetworkConstant {
   static const voice = "/ws/voice-chat";
   static const feedback = "feedback/";
   static const startChat = 'start-session/';
+  static const userBookings ='api/user/bookings';
+ 
 }
