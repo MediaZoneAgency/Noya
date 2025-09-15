@@ -27,8 +27,12 @@ android {
      applicationId "com.noyamz.noya"
      minSdk = flutter.minSdkVersion
         targetSdkVersion 36
-       versionCode = 7
-        versionName = "1.6"
+        externalNativeBuild {
+      cmake {
+        arguments "-DANDROID_SUPPORT_FLEXIBLE_PAGE_SIZES=ON"
+      }
+       versionCode = 8
+        versionName = "1.7"
     }
 
     signingConfigs {
