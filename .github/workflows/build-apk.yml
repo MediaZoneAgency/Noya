@@ -91,3 +91,49 @@ jobs:
           name: mapping-txt
           path: android/app/build/outputs/mapping/release/mapping.txt
           if-no-files-found: warn
+
+            # ================= iOS build (unsigned, Mode A) =================
+  build-ios:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select latest stable Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.35.2'
+          cache: true
+
+      - name: Flutter pub get
+        run: flutter pub get
+
+      # If you store GoogleService-Info.plist as Base64, restore it here (optional)
+      # - name: Restore GoogleService-Info.plist
+      #   run: echo "${{ secrets.IOS_GOOGLESERVICE_INFO_PLIST_BASE64 }}" | base64 -d > ios/Runner/GoogleService-Info.plist
+
+      - name: Install CocoaPods
+        run: |
+          sudo gem install cocoapods -N
+          rm -f ios/Podfile.lock
+          cd ios
+          pod repo update
+          pod install --repo-update --verbose
+
+      # Unsigned build: no Apple certs needed
+      - name: Build iOS archive (no codesign)
+        run: flutter build ipa --no-codesign --build-number $GITHUB_RUN_NUMBER
+
+      - name: Upload iOS .xcarchive
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-archive-unsigned
+          path: build/ios/archive/*.xcarchive
+          if-no-files-found: error
